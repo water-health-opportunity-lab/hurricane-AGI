@@ -10,34 +10,9 @@ library(tidycensus)
 library(tidyverse)
 library(terra)
 library(tidyr)
+library(tigris)
 
-# zip 3 polygon data --------
 
-gdb_path <- ("data/USA_Zip_Code_Boundaries/v108/zip_poly.gdb")
-st_layers(gdb_path)
-
-spatial_data <- st_read(gdb_path) # imports data into spatial_data vector
-head(spatial_data) # view data preview
-
-# subsetting into North Carolina
-nc <- subset(spatial_data, STATE == "NC")
-
-# creating new column with zip3 level
-nc <- nc %>% 
-  mutate(zip3 = substr(ZIP_CODE, 1, 3))
-
-head(nc[, c("ZIP_CODE", "zip3")]) # previewing data
-
-# aggregate into zip3 levels
-zip3_data <- nc %>% 
-  group_by(zip3) %>%
-  summarise(
-    Shape=st_union(Shape), 
-    n_zipcodes = n()
-  )
-
-# remove Hoffman Forest (0 population), zip3 000, row 1
-zip3_data <- zip3_data[-1,]
 
 # population data -----------
 
@@ -49,18 +24,22 @@ pop_fun <- function(year) {
     geography = "zcta", 
     variables = "B01003_001", 
     year = year, 
-    survey = "acs5"
+    survey = "acs5", 
+    geometry = FALSE
   ) %>%
     mutate(year=year)
   
   return(all_zctas)
 }
 
+# obtaining population estimates for 2016-2023 (most recent)
 population <- map_df(2016:2023, pop_fun)
 
+# filters for north carolina
 nc_pop <- population %>%
   filter(str_starts(GEOID, "27") | str_starts(GEOID, "28"))
 
+# aggregate into zip3
 nc_pop_zip3 <- nc_pop %>%
   mutate(zip3 = substr(GEOID, 1, 3)) %>%
   group_by(zip3, year) %>%
@@ -70,33 +49,55 @@ nc_pop_zip3 <- nc_pop %>%
     .groups = "drop"
   )
 
-# wrangling dataset to only have one row per zip3 level
+# pivot
 nc_pop_zip3_wide <- nc_pop_zip3 %>%
-   pivot_wider(
-     names_from = year, 
-     values_from = c(population, n_zips), 
-     names_sep = "_"
+  pivot_wider(
+    names_from = year, 
+    values_from = c(population, n_zips), 
+    names_sep = "_"
   )
-# resulting dataset has one row per zip3 level and a column for population and number of zip codes per year
 
 
-## join population and spatial data ----- 
-nc_final <- zip3_data %>%
-  left_join(nc_pop_zip3_wide, by = "zip3")
+# spatial data ------------
+
+# getting zcta shapes using tigris package - 2020 is most recent available
+zcta_geometry <- zctas(year = 2020, cb=TRUE)
+
+# filter for NC
+nc_zcta <- zcta_geometry %>%
+  filter(str_starts(GEOID20, "27") | str_starts(GEOID20, "28"))
+
+# agregate into zip3 
+nc_zip3_geom <- nc_zcta %>%
+  mutate(zip3 = substr(GEOID20, 1, 3)) %>%
+  group_by(zip3) %>%
+  summarise(
+    geometry=st_union(geometry)
+  )
+
+
+# joining spatial data and population
+nc_final <- nc_pop_zip3_wide %>%
+  left_join(nc_zip3_geom, by = c("zip3" = "zip3")) %>%
+  st_as_sf
+
+
 
 # map as test -- visualizing zip3 area
 ggplot(nc_final) +
-  geom_sf(aes(fill=zip3)) +
+  geom_sf(aes(geometry=geometry, fill=zip3)) +
   theme_minimal() +
   labs(title = "zip3 area")
 
 # map as test -- visualizing population
 ggplot(nc_final) +
-  geom_sf(aes(fill=population_2023), color="white") +
+  geom_sf(aes(geometry=geometry,fill=population_2023), color="white") +
   scale_fill_viridis_c(labels=scales::comma) +
   theme_minimal()+
   labs(title="2023 Population by Zip3 Level in North Carolina", 
        fill = "Population")
+
+
 
 # flood data ------
 
@@ -110,8 +111,11 @@ raster_stack <- rast(files)
 # checking if CRS matches
 st_crs(nc_final)
 crs(raster_stack)
-# both are WGS 84
+# nc_final is NAD 83, raster_stack is WGS 84
 
+# change nc_final to WGS 84 and confirm
+nc_final <- st_transform(nc_final, crs=4326)
+st_crs(nc_final)
 
 # calculates the mean raster value in each zip3
 mean_list <- lapply(raster_stack, function(r){
@@ -127,10 +131,13 @@ colnames(mean_df)[-1] <- names(raster_stack)
 # final dataframe combining flood and population data
 final_df <- full_join(nc_final, mean_df, by="zip3")
 
-# testing map
+# testing with map
 ggplot(final_df) +
   geom_sf(aes(fill=Flood_NC_2024092718), color="white") +
   scale_fill_gradient(low = "lightblue", high="darkblue", labels=scales::comma) +
   theme_minimal()+
   labs(title="Flood Inundation by Zip3 on Sept 27, 2024 at 18:00", 
        fill = "Flood Inundation")
+
+
+
