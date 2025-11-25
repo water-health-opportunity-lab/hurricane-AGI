@@ -67,7 +67,7 @@ zcta_geometry <- zctas(year = 2020, cb=TRUE)
 nc_zcta <- zcta_geometry %>%
   filter(str_starts(GEOID20, "27") | str_starts(GEOID20, "28"))
 
-# agregate into zip3 
+# aggregate into zip3 
 nc_zip3_geom <- nc_zcta %>%
   mutate(zip3 = substr(GEOID20, 1, 3)) %>%
   group_by(zip3) %>%
@@ -128,16 +128,84 @@ mean_df <- data.frame(zip3 = nc_final$zip3, do.call(cbind, mean_list))
 # renames column name with original raster name
 colnames(mean_df)[-1] <- names(raster_stack)
 
-# final dataframe combining flood and population data
+# dataframe combining flood and population data
 final_df <- full_join(nc_final, mean_df, by="zip3")
 
-# testing with map
+# creating new column with max level flood inundation 
+final_df <- final_df %>%
+  rowwise() %>%
+  mutate(max_flood_value = max(c_across(19:58), na.rm=TRUE)) %>%
+  ungroup()
+
+# testing with map - last time point
 ggplot(final_df) +
   geom_sf(aes(fill=Flood_NC_2024092718), color="white") +
   scale_fill_gradient(low = "lightblue", high="darkblue", labels=scales::comma) +
   theme_minimal()+
   labs(title="Flood Inundation by Zip3 on Sept 27, 2024 at 18:00", 
        fill = "Flood Inundation")
+
+# testing with map - max flood inundation
+ggplot(final_df) +
+  geom_sf(aes(fill=max_flood_value), color="white") +
+  scale_fill_gradient(low = "lightblue", high="darkblue", labels=scales::comma) +
+  theme_minimal()+
+  labs(title="Max Flood Inundation by Zip3", 
+       fill = "Flood Inundation")
+
+
+# FEMA floodplain data --------------
+
+# change file path
+fema <- st_read("/Users/katieobrien/Library/CloudStorage/OneDrive-SharedLibraries-TheGeorgeWashingtonUniversity/Hu, Cindy - FEMA Floodplain/North_Carolina_Flood_Hazard_Area_Effective.shp")
+
+# need to join to the zip3 data using spatial overlap because only county FIPS are available in the fema data
+
+# confirm CRS
+st_crs(final_df)
+# in WGS 1984; ESPG:4326
+
+# need to transform fema data into ESPF:4326
+fema_t <- st_transform(fema, st_crs(final_df))
+
+
+# several geometries in fema_t are invalid (same as in fema)
+# investigate invalid rows
+invalid_rows <- which(!st_is_valid(fema_t))
+fema_t[invalid_rows, ]
+st_is_valid(fema_t[invalid_rows, ], reason=TRUE)
+# make valid
+fema_t[invalid_rows, ] <- st_make_valid(fema_t[invalid_rows, ])
+# confirm it worked (length should equal 0)
+length(which(!st_is_valid(fema_t)))
+
+
+# all data combined
+fema_zip3 <- st_join(
+  final_df, 
+  fema_t, 
+  join=st_intersects
+)
+
+# calculates mean value of SFHA_TF in each zip3 level
+# SFHA_TF = special flood hazard area (1=yes, 0=no)
+fema_agg <- st_join(final_df, fema_t, join=st_intersects) %>%
+  group_by(zip3) %>%
+  summarize(
+    count=n(), 
+    mean_value = mean(SFHA_TF, na.rm=TRUE)
+  )
+
+# check using map
+ggplot(fema_agg) +
+  geom_sf(aes(fill = mean_value), color = "white") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  theme_minimal() +
+  labs(title = "Mean Value by Zip3", 
+       fill = "Mean Value")
+
+
+
 
 
 
