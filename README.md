@@ -10,11 +10,12 @@ This project develops reproducible, data-driven workflows to analyze the effects
 
 ``` text
 hurricane-AGI/
-├── hurricane-AGI.Rproj    # RStudio project file
+├── hurricane-AGI.Rproj   # RStudio project file
 ├── README.md             # Project documentation
 ├── renv.lock             # Records the exact versions of R and R packages to ensure reproducibility
 ├── renv/                 # Directory containing renv infrastructure for the project
 ├── data/                 # Directory containing input and output data, do not commit to git
+    ├──processed_data/    # Sub-folder with processed and analytical datasets
 └── script/               # Main analysis scripts
 ```
 
