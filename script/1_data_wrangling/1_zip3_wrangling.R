@@ -118,7 +118,6 @@ crs(raster_stack)
 nc_final <- st_transform(nc_final, crs=4326)
 st_crs(nc_final)
 
-
 raster_stack # 12.5*12.5 = 156.5 km^2 (1/8 degree) resolution
 st_area(nc_final)/(1000^2) # note that all areas > 156.5 km^2
 
@@ -213,7 +212,10 @@ ggplot(inundation_metrics) +
         axis.text.x = element_text(size = 8),
         plot.subtitle = element_text( hjust = 0.5))
 
-ggsave("figures/inundation_metric_comparison.png", dpi = 600, width = 7, height = 4)
+# only rewrite if there are edits:
+if (FALSE) {
+  ggsave("figures/inundation_metric_comparison.png", dpi = 600, width = 7, height = 4)
+}
 
 # map of mean % area inundated
 ggplot(final_df) +
@@ -235,7 +237,9 @@ ggplot(final_df) +
         legend.spacing = unit(1, unit = 'cm')) +
   guides(fill = guide_colourbar(title.position = "top", title.hjust = 0.5))
 
-ggsave("figures/mean_percent_inundated_map.png", dpi = 600, width = 7, height = 5)
+if (FALSE) {
+  ggsave("figures/mean_percent_inundated_map.png", dpi = 600, width = 7, height = 5)
+}
 
 # TODO: it may be nice to make a gif of the inundation time series 
   # over the zip3 units
@@ -259,4 +263,6 @@ final_df_long <- final_df_long %>%
   dplyr::select(-acs_var) %>%
   st_drop_geometry()
 
-write.csv(final_df_long, "data/processed_data/zip3_exposure_dataset.csv")
+if (FALSE) {
+  write.csv(final_df_long, "data/processed_data/zip3_exposure_dataset.csv")
+}
