@@ -1,20 +1,19 @@
 # Primary Authors: Katie O'Brien, Jahred Liddie
 # Purpose: This script pulls data on private well usages in NC and aggregates into the zip3 level.
 # Date created: December 17, 2025
-
 ###############################################################################
-
 # set up 
 library(terra)
 library(sf)
 library(dplyr)
 library(tigris)
 
-###############################################################################
+source("script/1_data_wrangling/1_zip3_wrangling.R")
 
-# read in well data
-# is the Well_Estimates_2020_Blocks.csv (https://github.com/USEPA/ORD_Water_Source_2020/blob/main/outputs/Well_Estimates_2020_Blocks.csv)
-welldata <- read.table("/Users/katieobrien/Downloads/Well_Estimates_2020_Blocks.txt", header=TRUE, sep=",")
+###############################################################################
+# directly read in Murray et al. 2020 estimates of domestic water sources in the US (US EPA ORD, 2020)
+  # see here: https://github.com/USEPA/ORD_Water_Source_2020
+welldata <- read.csv("https://media.githubusercontent.com/media/USEPA/ORD_Water_Source_2020/refs/heads/main/outputs/Well_Estimates_2020_Blocks.csv")
 
 # filtering for NC
 nc_data <- welldata %>%
@@ -44,8 +43,8 @@ zip3_wells <- bg_with_zip3 %>%
     Population = as.numeric(Population)
   ) %>%
   group_by(zip3) %>%
-  summarise(
-    weighted_percent=sum(Pct_Wells*Population, na.rm=TRUE) / sum(Population, na.rm=TRUE)
+  dplyr::summarise(
+    weighted_percent = stats::weighted.mean(x = Pct_Wells, w = Population, na.rm = TRUE)
   )
 
 # examining NA values
@@ -76,8 +75,8 @@ zip3_wells <- nc_final %>%
         Population = as.numeric(Population)
       ) %>%
       group_by(zip3) %>%
-      summarize(
-        weighted_percent_wells = sum(Pct_Wells*Population, na.rm = TRUE) / sum(Population, na.rm = TRUE)
+      dplyr::summarise(
+        weighted_percent_wells = stats::weighted.mean(x = Pct_Wells, w = Population, na.rm = TRUE)
       ), 
     by = "zip3"
   )
@@ -91,14 +90,23 @@ ggplot(zip3_wells) +
   theme_minimal() +
   labs(title="Percent of Private Well Users by Zip3")
 
+# another check for previously missing BGs
+  # ggplot(bg_with_zip3 %>% filter(is.na(zip3))) +
+  #   geom_sf() +
+  #   geom_sf(data = nc_final, aes(fill = zip3), alpha = 0.5)
+
+  # View(bg_with_zip3_fixed %>% filter(GEOID %in% bg_with_zip3$GEOID[is.na(bg_with_zip3$zip3)]))
+
 # combining with final_df_long from zip3_wrangling script
 final_df_long_well <- final_df_long %>%
   left_join(
     zip3_wells %>% 
       st_drop_geometry() %>% 
-      select(zip3, weighted_percent_wells), 
+      dplyr::select(zip3, weighted_percent_wells), 
     by="zip3"
     )
 
-# write.csv(final_df_long_well, "data/processed_data/zip3_exposure_dataset.csv")
+if (FALSE) {
+  write.csv(final_df_long_well, "data/processed_data/zip3_exposure_dataset.csv")
+}
 
