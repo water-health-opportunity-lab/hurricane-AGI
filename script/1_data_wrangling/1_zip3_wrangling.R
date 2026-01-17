@@ -259,7 +259,9 @@ gif_long <- final_df %>%
     time_point = str_remove(time_point, "_nonNA_fraction$"), 
     datetime = ymd_h(time_point), 
     time_label = format(datetime, "%b %d, %Y %I%p")
-  )
+  ) %>%
+  arrange(datetime) %>%
+  mutate(time_order = factor(time_label, levels = unique(time_label)))
 
 
 # order by time
@@ -269,7 +271,7 @@ gif_long <- gif_long %>%
 
 # making gif with 5 colors (continuous scale)
 map_anim <- ggplot(gif_long) +
-  geom_sf(aes(fill = pct_flooded), color = "gray", size = 0.1) +
+  geom_sf(aes(fill = pct_flooded, group=time_order), color = "gray", size = 0.1) +
   scale_fill_gradientn(
     colors = c("white", "steelblue1","steelblue2", "steelblue3", "steelblue4"), 
     name = "% Flooded", 
@@ -279,7 +281,7 @@ map_anim <- ggplot(gif_long) +
   theme_minimal() +
   theme(
     legend.position = "right", 
-    lengend.title = element_text(size = 18, face = "bold"), 
+    legend.title = element_text(size = 18, face = "bold"), 
     legend.text = element_text(size = 16), 
     legend.key.height = unit(1.5, "cm"), 
     legend.key.width = unit(0.8, "cm"), 
@@ -290,14 +292,14 @@ map_anim <- ggplot(gif_long) +
     panel.grid = element_blank()
   ) +
   labs(
-    title = "Hurricane Helene Flooding by Zip3 Area in North Carolina", 
+    title = "Hurricane Helene Flood Inundation by Zip3 Area in North Carolina", 
     subtitle = "{closest_state}"
   ) +
   transition_states(
-    time_label, 
-    transition_length =2, 
+    time_order, 
+    transition_length = 2, 
     state_length = 3
-  ) + 
+  )+
   ease_aes('linear')
 
 # save in figures folder
