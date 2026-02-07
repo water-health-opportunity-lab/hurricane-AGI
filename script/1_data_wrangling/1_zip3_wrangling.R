@@ -15,6 +15,7 @@ library(tidyr)
 library(tigris)
 library(tidycensus)
 library(tidyverse)
+library(gganimate)
 
 ################################################################################
 # set your API key, save your API key in .renviron, don't save it in the script
@@ -101,7 +102,7 @@ nc_final <- nc_pop_zip3_wide %>%
 # flood data ------
 
 # need to change out file path for where the 'Completed .tif files' folder is stored
-filepath <- '../../../../../OneDrive-SharedLibraries-TheGeorgeWashingtonUniversity/Hu, Cindy - REACH pilot/2-aims/aim3/2_raw_data/01_exposure_assessment/Satellite-based inundation map/Completed .tif files'
+filepath <- '.../.../.../OneDrive-SharedLibraries-TheGeorgeWashingtonUniversity/Hu, Cindy - REACH pilot/2-aims/aim3/2_raw_data/01_exposure_assessment/Satellite-based inundation map/Completed .tif files'
 
 files <- list.files(filepath, pattern = "\\.tif$", full.names=TRUE)
 
@@ -241,8 +242,69 @@ if (FALSE) {
   ggsave("figures/mean_percent_inundated_map.png", dpi = 600, width = 7, height = 5)
 }
 
-# TODO: it may be nice to make a gif of the inundation time series 
-  # over the zip3 units
+
+#############################################################################
+# making a gif of inundation time series over the zip3 units
+
+# pivot to long form for gif and pull out time points from column titles
+gif_long <- final_df %>%
+  select(zip3, geometry, starts_with("Flood_")) %>%
+  pivot_longer(
+    cols = starts_with("Flood_"), 
+    names_to = "time_point", 
+    values_to = "pct_flooded"
+  ) %>%
+  mutate(
+    time_point = str_remove(time_point, "^Flood_NC_"), 
+    time_point = str_remove(time_point, "_nonNA_fraction$"), 
+    datetime = ymd_h(time_point), 
+    time_label = format(datetime, "%b %d, %Y %I%p")
+  ) %>%
+  arrange(datetime) %>%
+  mutate(time_order = factor(time_label, levels = unique(time_label)))
+
+
+# order by time
+gif_long <- gif_long %>%
+  arrange(datetime) %>% 
+  mutate(time_label = factor(time_label, levels = unique(time_label)))
+
+# making gif with 5 colors (continuous scale)
+map_anim <- ggplot(gif_long) +
+  geom_sf(aes(fill = pct_flooded, group=time_order), color = "gray", size = 0.1) +
+  scale_fill_gradientn(
+    colors = c("white", "steelblue1","steelblue2", "steelblue3", "steelblue4"), 
+    name = "% Flooded", 
+    breaks = seq(0, max(gif_long$pct_flooded, na.rm=TRUE), length.out=5), 
+    labels = scales::percent_format(scale=1)
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right", 
+    legend.title = element_text(size = 18, face = "bold"), 
+    legend.text = element_text(size = 16), 
+    legend.key.height = unit(1.5, "cm"), 
+    legend.key.width = unit(0.8, "cm"), 
+    plot.title = element_text(size = 24, face = "bold"), 
+    plot.subtitle = element_text(size = 20), 
+    axis.text = element_blank(), 
+    axis.ticks = element_blank(), 
+    panel.grid = element_blank()
+  ) +
+  labs(
+    title = "Hurricane Helene Flood Inundation by Zip3 Area in North Carolina", 
+    subtitle = "{closest_state}"
+  ) +
+  transition_states(
+    time_order, 
+    transition_length = 2, 
+    state_length = 3
+  )+
+  ease_aes('linear')
+
+# save in figures folder
+animate(map_anim, nframes = 150, fps = 10, width = 1000, height = 800, 
+        renderer = gifski_renderer("figures/flooding_over_time.gif"))
 
 ################################################################################
 # carrying 2019-2023 population estimates forward for 2024 estimates
