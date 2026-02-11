@@ -19,293 +19,15 @@ source("script/1_data_wrangling/1_zip3_wrangling.R")
 
 ###############################################################################
 
-######################### testing with just two weeks ########################
-
-# tested the functions initially to make sure everything worked before full download
-
 # set temporary directory
-new_dir <- "C:/Users/kobri/Downloads/prism_temp_0126"
-prism_set_dl_dir(new_dir)
-dir.create(new_dir, showWarnings=FALSE, recursive=TRUE)
-
-# set directory for completed data
-new_nc_dir <- "C:/Users/kobri/Downloads/prism_nc_0126"
-dir.create(new_nc_dir, showWarnings=FALSE, recursive=TRUE)
-
-# define study period - using first two weeks of 2024 as test
-start_date6 <- as.Date("2024-01-01")
-end_date6 <- as.Date("2024-01-14")
-
-# define NC boundary to be used
-nc_boundary6 <- tigris::states(cb = TRUE, year = 2020) %>%
-  filter(STUSPS == "NC") %>%
-  st_transform(crs = 4269)
-
-# for tracking progress on data processing
-start_time <- Sys.time()
-total_weeks_processed <- 0 
-
-# defining variables to pull; pulling dewpoint separately because not available for all weeks
-variables6 <- c("tmin", "tmax", "tmean", "ppt")
-
-# defining weeks as sequence of 7 days after the start date (Jan 1, 2024)
-week_starts <- seq(start_date6, end_date6, by = 7)
-
-# checking that the appropriate number of weeks will be processed - 2 weeks for this test
-cat("Will process", length(week_starts), "weeks\n\n")
-
-# processing function
-process_week <- function(week_start, week_end, variable,
-                         nc_boundary6, nc_output_dir6, temp_dir) {
-  
-  # descriptive writing to keep track of downloading status
-  cat("  Processing week:", format(week_start), "to", format(week_end), "\n")
-  
-  # clean prism archive 
-  unlink(temp_dir, recursive = TRUE)
-  dir.create(temp_dir, recursive = TRUE)
-  
-  # loop over each day, gathers prism data for each day 
-  dates <- seq(week_start, week_end, by = "day")
-  date_strings <- format(dates, "%Y%m%d")
-  
-  lapply(dates, function(d) {
-    get_prism_dailys(
-      type = variable,
-      minDate = format(d, "%Y-%m-%d"),
-      maxDate = format(d, "%Y-%m-%d"),
-      keepZip = FALSE
-    )
-  })
-  
-  # identify the files for the weekly aggregation
-  prism_files <- prism_archive_ls()
-  
-  if (length(prism_files) == 0) {
-    cat("    No PRISM files found in archive after download\n")
-    return(NULL)
-  }
-  
-  # filter by date strings
-  prism_files <- prism_files[
-    Reduce(`|`, lapply(date_strings, grepl, prism_files))
-  ]
-  
-  if (length(prism_files) == 0) {
-    cat("    No files matched the expected dates\n")
-    return(NULL)
-  }
-  
-  cat("    Found", length(prism_files), "daily files\n")
-  
-  # crop to NC boundary
-  daily_rasters_nc <- list()
-  
-  for (pf in prism_files) {
-    file_path <- pd_to_file(pf)
-    
-    if (!file.exists(file_path)) next
-    
-    r <- rast(file_path)
-    
-    # clip to NC
-    r_cropped <- crop(r, vect(nc_boundary6))
-    r_clipped <- mask(r_cropped, vect(nc_boundary6))
-    
-    daily_rasters_nc[[length(daily_rasters_nc) + 1]] <- r_clipped
-    
-    # remove full US file
-    unlink(dirname(file_path), recursive = TRUE)
-  }
-  
-  if (length(daily_rasters_nc) == 0) {
-    cat("    No valid rasters after clipping\n")
-    return(NULL)
-  }
-  
-  # aggregate to weekly values
-  weekly_stack <- rast(daily_rasters_nc)
-  
-  if (variable == "ppt") {
-    # calculating sum for precipitation
-    weekly_sum  <- app(weekly_stack, sum, na.rm = TRUE)
-    # calculating mean for precipitation
-    weekly_mean <- app(weekly_stack, mean, na.rm = TRUE)
-    
-    # naming final file for precipitation sum
-    out_sum  <- file.path(nc_output_dir6,
-                          paste0(variable, "_", format(week_start, "%Y%m%d"), "_weekly_sum.tif"))
-    # naming final file for precipitation mean 
-    out_mean <- file.path(nc_output_dir6,
-                          paste0(variable, "_", format(week_start, "%Y%m%d"), "_weekly_mean.tif"))
-    
-    # writing final raster file for precipitation sum
-    writeRaster(weekly_sum,  out_sum,  overwrite = TRUE)
-    # writing final raster file for precipitation mean
-    writeRaster(weekly_mean, out_mean, overwrite = TRUE)
-    
-    # descriptive writing to indicate it was saved
-    cat("    Saved:", basename(out_sum), "\n")
-    cat("    Saved:", basename(out_mean), "\n")
-    
-    return(list(sum = out_sum, mean = out_mean))
-    
-  } else {
-    # for all variables other than precipitation, calculate the weekly mean
-    weekly_mean <- app(weekly_stack, mean, na.rm = TRUE)
-    
-    # naming final file
-    out_file <- file.path(nc_output_dir6,
-                          paste0(variable, "_", format(week_start, "%Y%m%d"), "_weekly_mean.tif"))
-    
-    # writing final raster file
-    writeRaster(weekly_mean, out_file, overwrite = TRUE)
-    
-    # descriptive writing to indicate it was saved
-    cat("    Saved:", basename(out_file), "\n")
-    
-    return(out_file)
-  }
-}
-
-# for processing each variable
-for (var in variables6) {
-  
-  # descriptive writing to keep track of status
-  cat("\n")
-  cat(paste(rep("=", 70), collapse = ""), "\n")
-  cat("Processing variable:", toupper(var), "\n")
-  cat(paste(rep("=", 70), collapse = ""), "\n\n")
-  
-  var_weeks <- 0
-  
-  for (i in seq_along(week_starts)) {
-    
-    # defines week as week_start + 6 days
-    week_start <- week_starts[i]
-    week_end   <- min(week_start + days(6), end_date6)
-    
-    if (week_start > end_date6) break
-    
-    # descriptive writing to keep track of status
-    cat("Week", as.character(i), "of", as.character(length(week_starts)),
-        "-", as.character(var), "\n")
-    
-    # processing
-    result <- process_week(
-      week_start,
-      week_end,
-      var,
-      nc_boundary6,
-      new_nc_dir,      
-      prism_get_dl_dir()
-    )
-    
-    if (!is.null(result)) {
-      var_weeks <- var_weeks + 1
-      total_weeks_processed <- total_weeks_processed + 1
-    }
-    
-    # lag to not overwhelm server
-    Sys.sleep(1)
-  }
-  
-  cat("\nCompleted", as.character(var), "- Total weeks:", as.character(var_weeks), "\n")
-  
-  # calculates how long the download took
-  elapsed <- as.numeric(difftime(Sys.time(), start_time, units = "mins"))
-  cat("Elapsed time:", as.character(round(elapsed, 1)), "minutes\n")
-}
-
-
-####################### validation of initial test ###########################
-
-# manually checking Jan 1 - Jan 7 2024 for mean temp
-
-# pulls in R processed code for mean temp for Jan 1-7, 2024
-mean_temp <- rast("C:/Users/kobri/Downloads/prism_nc_0126/tmean_20240101_weekly_mean.tif")
-
-# convert to F for easier interpretation
-mean_temp_f <- (mean_temp*1.8) + 32
-
-# visualizing temp for general correctness
-plot(mean_temp_f)
-nc_vect <- vect(nc_boundary6)
-plot(nc_vect, add = TRUE)
-
-# summary stats for processed code
-vals <- values(mean_temp_f, na.rm = TRUE)
-summary_table <- data.frame(
-  mean = mean(vals), 
-  min = min(vals), 
-  max = max(vals),
-  sd = sd(vals),
-  median = median(vals)
-)
-
-summary_table
-# mean: 39.13769 min: 27.0644 max: 49.13857 sd: 3.746411 median: 39.43374
-
-# check resolution: 4km
-res(mean_temp_f)
-
-# check CRS
-crs(mean_temp_f)
-crs(nc_vect)
-# CRS matches
-
-# testing with manual download from prism website for January 1-7, 2024
-
-# pulling in folder of downloaded files and stacking them
-check <- "C:/Users/kobri/Downloads/manual_check_nc_2024"
-files <- list.files(check, pattern = "\\.tif$", full.names=TRUE)
-check_stack <- rast(files)
-
-# clip to NC boundary
-check_cropped <- crop(check_stack, vect(nc_boundary6))
-check_clipped <- mask(check_cropped, vect(nc_boundary6))
-
-# calculate the mean across the raster stack
-check_mean <- mean(check_clipped, na.rm=TRUE)
-
-# convert to F 
-check_mean_temp_f <- (check_mean*1.8) + 32
-
-#plot to assess general correctness
-plot(check_mean_temp_f)
-
-# check CRS
-crs(check_mean_temp_f)
-
-# summary statistics 
-check_vals <- values(check_mean_temp_f, na.rm = TRUE)
-check_summary_table <- data.frame(
-  mean = mean(check_vals), 
-  min = min(check_vals), 
-  max = max(check_vals),
-  sd = sd(check_vals),
-  median = median(check_vals)
-)
-
-check_summary_table
-# mean: 39.13769 min: 27.0644 max: 49.13857 sd: 3.746411 median: 39.43374
-
-# direct copy paste comparison
-# mean: 39.13769 min: 27.0644 max: 49.13857 sd: 3.746411 median: 39.43374
-# mean: 39.13769 min: 27.0644 max: 49.13857 sd: 3.746411 median: 39.43374
-
-# indicates code works, so proceed with the full download
-
-
-######################### full data download ##################################
-
-# set temporary directory
-full_dir_temp <- "C:/Users/kobri/Downloads/prism_temp_full_0128"
+# note: prism_temp_full_0128 will be a folder on your personal computer
+full_dir_temp <- ".../.../.../.../prism_temp_full_0128"
 prism_set_dl_dir(full_dir_temp)
 dir.create(full_dir_temp, showWarnings=FALSE, recursive=TRUE)
 
 # set directory for completed data
-full_nc_dir <- "C:/Users/kobri/Downloads/prism_nc_full_0128"
+# note: prism_nc_full_0128 will be a folder on your personal computer
+full_nc_dir <- ".../.../.../.../prism_nc_full_0128"
 dir.create(full_nc_dir, showWarnings=FALSE, recursive=TRUE)
 
 # define study period as January 1, 2016 to January 2, 2025 - full 470 weeks
@@ -540,12 +262,17 @@ for (var in c(variables)) {
 
 # all show correct number of files
 
-########################## validation check ###################################
+######################### validation check ###################################
+
+# manually downloading data from the prism website to compare with processed data
+# https://prism.oregonstate.edu/
 
 # validation 1
 
 # validating precipitation data for May 10-16, 2019 - mean
-mean_precip <- rast("C:/Users/kobri/Downloads/prism_nc_full_0128/ppt_20190510_weekly_mean.tif")
+
+# data processed in R
+mean_precip <- rast(".../.../.../.../prism_nc_full_0128/ppt_20190510_weekly_mean.tif")
 
 # summary stats for processed code
 vals <- values(mean_precip, na.rm = TRUE)
@@ -560,9 +287,11 @@ summary_table <- data.frame(
 summary_table
 # mean: 4.041678 min: 0.04057143 max: 17.71371 sd: 3.451237 median: 2.884929
 
-# summary stats for manual download
+# data manually downloaded
 # pulling in folder of downloaded files and stacking them
-check <- "C:/Users/kobri/Downloads/precip_check"
+# note: precip_check will be a folder on your personal computer storing the 
+# downloaded data
+check <- ".../.../.../.../precip_check"
 files <- list.files(check, pattern = "\\.tif$", full.names=TRUE)
 check_stack <- rast(files)
 
@@ -595,6 +324,8 @@ check_summary_table
 # validation 2
 
 # validating precipitation data for May 10-16, 2019 - sum
+
+# data processed in R
 sum_precip <- rast("C:/Users/kobri/Downloads/prism_nc_full_0128/ppt_20190510_weekly_sum.tif")
 
 # summary stats for processed code
@@ -610,9 +341,11 @@ summary_table <- data.frame(
 summary_table
 # mean: 28.29175 min: 0.284 max: 123.996 sd: 24.15866 median: 20.1945
 
-# summary stats for manual download
+# data manually downloaded
 # pulling in folder of downloaded files and stacking them
-check <- "C:/Users/kobri/Downloads/precip_check"
+# note: precip_check will be a folder on your personal computer storing the 
+# downloaded data
+check <- ".../.../.../.../precip_check"
 files <- list.files(check, pattern = "\\.tif$", full.names=TRUE)
 check_stack <- rast(files)
 
@@ -735,19 +468,20 @@ zip3_envdat_wide <- zip3_envdat_unique |>
   )
 
 
-# calculate humidity
+# calculate humidity using the Magnus Equation
 zip3_envdat_wide <- zip3_envdat_wide |>
   mutate(
     humidity = 100 *
-      (exp((17.67 * tdmean) / (tdmean + 243.5))) /
-      (exp((17.67 * tmean) / (tmean + 243.5)))
+      (exp((17.625 * tdmean) / (tdmean + 243.4))) /
+      (exp((17.625 * tmean) / (tmean + 243.4)))
   )
 
 
 # save final dataset
 prism_nc_final <- zip3_envdat_wide
 
-# write.csv(prism_nc_final, "data/processed_data/zip3_environmental_data.csv")
-
+if (FALSE) {
+  write.csv(prism_nc_final, ".../.../.../.../.../2-aims/aim3/3_processed_data/env_data.csv")
+}
 
 
