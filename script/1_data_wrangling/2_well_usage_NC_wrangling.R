@@ -107,6 +107,6 @@ final_df_long_well <- final_df_long %>%
     )
 
 if (FALSE) {
-  write.csv(final_df_long_well, "data/processed_data/zip3_exposure_dataset.csv")
+  write.csv(final_df_long_well, ".../.../.../.../.../2-aims/aim3/3_processed_data/zip3_exposure_dataset.csv")
 }
 

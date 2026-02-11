@@ -102,7 +102,7 @@ nc_final <- nc_pop_zip3_wide %>%
 # flood data ------
 
 # need to change out file path for where the 'Completed .tif files' folder is stored
-filepath <- '.../.../.../OneDrive-SharedLibraries-TheGeorgeWashingtonUniversity/Hu, Cindy - REACH pilot/2-aims/aim3/2_raw_data/01_exposure_assessment/Satellite-based inundation map/Completed .tif files'
+filepath <- '.../.../.../.../2-aims/aim3/2_raw_data/01_exposure_assessment/Satellite-based inundation map/Completed .tif files'
 
 files <- list.files(filepath, pattern = "\\.tif$", full.names=TRUE)
 
@@ -255,6 +255,7 @@ gif_long <- final_df %>%
     values_to = "pct_flooded"
   ) %>%
   mutate(
+    pct_flooded = pct_flooded*100,
     time_point = str_remove(time_point, "^Flood_NC_"), 
     time_point = str_remove(time_point, "_nonNA_fraction$"), 
     datetime = ymd_h(time_point), 
@@ -264,11 +265,6 @@ gif_long <- final_df %>%
   mutate(time_order = factor(time_label, levels = unique(time_label)))
 
 
-# order by time
-gif_long <- gif_long %>%
-  arrange(datetime) %>% 
-  mutate(time_label = factor(time_label, levels = unique(time_label)))
-
 # making gif with 5 colors (continuous scale)
 map_anim <- ggplot(gif_long) +
   geom_sf(aes(fill = pct_flooded, group=time_order), color = "gray", size = 0.1) +
@@ -276,17 +272,17 @@ map_anim <- ggplot(gif_long) +
     colors = c("white", "steelblue1","steelblue2", "steelblue3", "steelblue4"), 
     name = "% Flooded", 
     breaks = seq(0, max(gif_long$pct_flooded, na.rm=TRUE), length.out=5), 
-    labels = scales::percent_format(scale=1)
+    labels = scales::percent_format(scale=1) # need to make into percent
   ) +
   theme_minimal() +
   theme(
     legend.position = "right", 
-    legend.title = element_text(size = 18, face = "bold"), 
-    legend.text = element_text(size = 16), 
+    legend.title = element_text(size = 18, face = "bold", family = "serif"), 
+    legend.text = element_text(size = 16, family = "serif"), 
     legend.key.height = unit(1.5, "cm"), 
     legend.key.width = unit(0.8, "cm"), 
-    plot.title = element_text(size = 24, face = "bold"), 
-    plot.subtitle = element_text(size = 20), 
+    plot.title = element_text(size = 26, face = "bold", hjust = 0.5, family = "serif"), 
+    plot.subtitle = element_text(size = 24, hjust = 0.5, family = "serif"), 
     axis.text = element_blank(), 
     axis.ticks = element_blank(), 
     panel.grid = element_blank()
@@ -326,5 +322,5 @@ final_df_long <- final_df_long %>%
   st_drop_geometry()
 
 if (FALSE) {
-  write.csv(final_df_long, "data/processed_data/zip3_exposure_dataset.csv")
+  write.csv(final_df_long, ".../.../.../.../.../2-aims/aim3/3_processed_data/zip3_exposure_dataset.csv")
 }
