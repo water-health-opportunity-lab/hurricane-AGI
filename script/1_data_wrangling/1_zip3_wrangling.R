@@ -185,6 +185,8 @@ final_df <- final_df %>%
       na.rm=TRUE)) %>%
   ungroup()
 
+# exposure: determined based on whether the mean % area flooded over the course of the 
+  # hurricane was greater than 50%
 final_df <- final_df %>%
   mutate(inundation_exposure = mean_flood_value > 0.5)
 
