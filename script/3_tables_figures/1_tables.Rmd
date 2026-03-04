@@ -1,0 +1,87 @@
+---
+title: "1_tables"
+output: html_document
+---
+
+Primary Authors: Katie O'Brien, Amina Pasha, Jahred Liddie
+Purpose: 
+Date created: February 23, 2026
+
+
+Set up 
+```{r}
+library(tidycensus)
+library(qwraps2)
+library(tigris)
+library(dplyr)
+library(stringr)
+library(sf)
+
+# pull in data
+exposure_data_full <- read.csv("../../data/processed_data/zip3_exposure_dataset.csv")
+
+env_data <- read.csv("../../data/processed_data/env_data.csv")
+
+demodata <- read.csv("../../data/processed_data/demodata.csv")
+
+# subsetting exposure_data to just the 2024 year (refers only to population), so that we have a dataframe with exposure for each zip3
+exposure_data <- subset(exposure_data_full, subset = exposure_data_full$year == "2024")
+
+# join exposure data and demographic data
+exposure_data$zip3 <- as.character(exposure_data$zip3)
+demodata$zip3 <- as.character(demodata$zip3)
+
+table_data <- full_join(demodata, exposure_data, by = "zip3")
+
+# creating new column labeling exposure to flooding to clean up table columns
+table_data <- table_data |> mutate(exposure_desc = if_else(inundation_exposure == TRUE, "Exposed to Flooding", "Not Exposed to Flooding"))
+
+```
+
+
+
+```{r}
+
+options(qwraps2_markup = "markdown")
+
+# cleans table data
+table_data_c <- table_data %>%
+  st_drop_geometry() %>%
+  mutate(inundation_exposure = as.factor(inundation_exposure)) %>%
+  as.data.frame()
+
+# template for table
+demographic_stats <- 
+  list("Race and Ethnicity" = 
+         list("Total Population" = ~ format(sum(estimate_total_population, na.rm = TRUE), big.mark = ","), 
+              "non-Hispanic Black" = ~paste0(format(sum(estimate_black, na.rm = TRUE), big.mark = ","), 
+                                             " (", round(sum(estimate_black, na.rm = TRUE) / sum(estimate_total_population, na.rm = TRUE)*100, 1), "%)"), 
+              "non-Hispanic White" = ~paste0(format(sum(estimate_white, na.rm = TRUE), big.mark = ","), 
+                                             " (", round(sum(estimate_white, na.rm = TRUE) / sum(estimate_total_population, na.rm = TRUE)*100, 1), "%)"), 
+              "non-Hispanic Asian" = ~paste0(format(sum(estimate_asian, na.rm = TRUE), big.mark = ","), 
+                                             " (", round(sum(estimate_asian, na.rm = TRUE) / sum(estimate_total_population, na.rm = TRUE)*100, 1), "%)"),
+              "non-Hispanic American Indian or Alaskan Native" = ~paste0(format(sum(estimate_AI_AN, na.rm = TRUE), big.mark = ","), 
+                                             " (", round(sum(estimate_AI_AN, na.rm = TRUE) / sum(estimate_total_population, na.rm = TRUE)*100, 1), "%)"),
+              "non-Hispanic Two or More Races" = ~paste0(format(sum(estimate_two_more, na.rm = TRUE), big.mark = ","), 
+                                             " (", round(sum(estimate_two_more, na.rm = TRUE) / sum(estimate_total_population, na.rm = TRUE)*100, 1), "%)"),
+              "Hispanic" = ~paste0(format(sum(estimate_hispanic, na.rm = TRUE), big.mark = ","), 
+                                             " (", round(sum(estimate_hispanic, na.rm = TRUE) / sum(estimate_total_population, na.rm = TRUE)*100, 1), "%)")), 
+  "Other Demographic Factors" = 
+         list("Median Household Income [USD]" = ~mean_sd(avg_med_income), 
+              "Number of Rural Households" = ~paste0(format(sum(rural_hhs, na.rm = TRUE), big.mark = ","), 
+                                                     " (", round(sum(rural_hhs, na.rm = TRUE) / sum(total_hhs, na.rm = TRUE)*100, 1), "%)"),
+              "No Health Insurance" = ~paste0(format(sum(estimate_uninsured, na.rm = TRUE), big.mark = ","), 
+                                              " (", round(sum(estimate_uninsured, na.rm = TRUE) / sum(estimate_total_ins, na.rm =TRUE) *100, 1), "%)"), 
+              "Area [sqmi]" = ~format(sum(as.numeric(area_sqmi), na.rm = TRUE), big.mark = ","), 
+              "Population Density [People per sqmi]" = ~round(sum(estimate_total_population, na.rm = TRUE) / sum(area_sqmi, na.rm = TRUE), 1)))
+
+
+summary_table(table_data_c, demographic_stats)
+
+# creates table using the cleaned dataframe, specifies the columns to be exposed/unexposed
+summary_table(table_data_c, demographic_stats, by = "exposure_desc")
+
+ 
+```
+
+
