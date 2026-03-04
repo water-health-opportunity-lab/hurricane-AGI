@@ -23,7 +23,7 @@ exposure_data_full <- read.csv(".../.../.../.../.../2-aims/aim3/3_processed_data
 
 env_data <- read.csv(".../.../.../.../.../2-aims/aim3/3_processed_data/env_data.csv")
 
-demodata <- read.csv(".../.../.../.../.../2-aims/aim3/3_processed_data/demodata.csv")
+demodata <- read.csv("../.../.../.../.../2-aims/aim3/3_processed_data/demodata.csv")
 
 # subsetting exposure_data to just the 2024 year (refers only to population), so that we have a dataframe with exposure for each zip3
 exposure_data <- subset(exposure_data_full, subset = exposure_data_full$year == "2024")
@@ -71,10 +71,11 @@ demographic_stats <-
                                                      " (", round(sum(rural_hhs, na.rm = TRUE) / sum(total_hhs, na.rm = TRUE)*100, 1), "%)"),
               "No Health Insurance" = ~paste0(format(sum(estimate_uninsured, na.rm = TRUE), big.mark = ","), 
                                               " (", round(sum(estimate_uninsured, na.rm = TRUE) / sum(estimate_total_ins, na.rm =TRUE) *100, 1), "%)"), 
-              "Area [sqmi]" = ~format(sum(as.numeric(area_sqmi), na.rm = TRUE), big.mark = ",")))
+              "Area [sqmi]" = ~format(sum(as.numeric(area_sqmi), na.rm = TRUE), big.mark = ","), 
+              "Population Density [People per sqmi]" = ~round(sum(estimate_total_population, na.rm = TRUE) / sum(area_sqmi, na.rm = TRUE), 1)))
 
 
-# creates table using the cleaned dataframe, specifies the columns to be exposured/unexposed
+# creates table using the cleaned dataframe, specifies the columns to be exposed/unexposed
 summary_table(table_data_c, demographic_stats, by = "exposure_desc")
 
  

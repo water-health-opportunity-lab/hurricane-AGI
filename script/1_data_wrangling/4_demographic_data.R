@@ -193,9 +193,9 @@ demodata_list <- list(nc_geom_sqmi, nc_race_zip3_wide, nc_unins_rates, nc_income
 demodata <- demodata_list %>%
   reduce(left_join, by = "zip3")
 
+
 # write to csv
 if (FALSE) {
   write.csv(demodata, ".../.../.../.../.../2-aims/aim3/3_processed_data/demodata.csv")
 }
-
 
