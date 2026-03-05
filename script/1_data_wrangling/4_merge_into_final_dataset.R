@@ -142,17 +142,22 @@ exposure$zip3 <- as.factor(exposure$zip3)
 
 join_outcomes_exposure <- left_join(join_outcomes, 
                                     exposure %>% 
-                                      dplyr::select(zip3, inundation_exposure, total_population, year, weighted_percent_wells),
+                                      dplyr::select(zip3:year),
                                     by = c("zip3", "year"))
 
 join_outcomes_exposure <- join_outcomes_exposure %>%
   # 3-, 5-, and 8-week intervals after hurricane
   mutate(hurricane_3week = ifelse(date >= as.Date("2024-09-24") & date <= as.Date("2024-09-24") + 21, TRUE, FALSE),
          hurricane_5week = ifelse(date >= as.Date("2024-09-24") & date <= as.Date("2024-09-24") + 35, TRUE, FALSE),
-         hurricane_8week = ifelse(date >= as.Date("2024-09-24") & date <= as.Date("2024-09-24") + 56, TRUE, FALSE))
+         hurricane_8week = ifelse(date >= as.Date("2024-09-24") & date <= as.Date("2024-09-24") + 56, TRUE, FALSE),
+         # based on whether the majority of the month is in that season
+         season = case_when(month %in% c(1, 2, 3) ~ "Winter",
+                            month %in% c(4, 5, 6) ~ "Spring",
+                            month %in% c(7, 8, 9) ~ "Summer",
+                            month %in% c(10, 11, 12) ~ "Fall"))
 
 join_outcomes_exposure <- join_outcomes_exposure %>%
-  dplyr::select(-X, -encounter_year, )
+  dplyr::select(-X, -encounter_year)
 
 if (FALSE) {
   write_csv(join_outcomes_exposure, "data/processed_data/analytic_dataset.csv")

@@ -99,7 +99,7 @@ nc_final <- nc_pop_zip3_wide %>%
   #   labs(title="2023 Population by Zip3 Level in North Carolina", 
   #        fill = "Population")
 
-# flood data ------
+# flood data ------ (Global Flood Monitoring System (GFMS) data)
 
 # need to change out file path for where the 'Completed .tif files' folder is stored
 filepath <- '.../.../.../.../2-aims/aim3/2_raw_data/01_exposure_assessment/Satellite-based inundation map/Completed .tif files'
@@ -171,7 +171,7 @@ colnames(nonNA_frac) <- paste0(names(raster_stack), "_nonNA_fraction")
 # bind results
 final_df <- cbind(nc_final, nonNA_frac)
 
-# creating new column with max level flood inundation 
+# creating new column with mean, median, and max % area flooded over the hurricane period
 final_df <- final_df %>%
   rowwise() %>%
   mutate(mean_flood_value = mean(
@@ -183,9 +183,11 @@ final_df <- final_df %>%
     max_flood_value = max(
       c_across(Flood_NC_2024092400_nonNA_fraction:Flood_NC_2024092821_nonNA_fraction), 
       na.rm=TRUE)) %>%
-  ungroup()
+  ungroup() %>%
+  mutate(tertile_flood_value = ntile(mean_flood_value, 3),
+         quartile_flood_value = ntile(mean_flood_value, 4))
 
-# exposure: determined based on whether the mean % area flooded over the course of the 
+# primary exposure: determined based on whether the mean % area flooded over the course of the 
   # hurricane was greater than 50%
 final_df <- final_df %>%
   mutate(inundation_exposure = mean_flood_value > 0.5)
@@ -311,7 +313,8 @@ final_df <- final_df %>%
 
 final_df_long <- final_df %>%
   dplyr::select(zip3, starts_with("population_"),
-                mean_flood_value, median_flood_value, max_flood_value, inundation_exposure)
+                mean_flood_value, median_flood_value, max_flood_value, inundation_exposure,
+                quartile_flood_value, tertile_flood_value)
 
 final_df_long <- pivot_longer(final_df_long, 
                               cols = c(population_2016:population_2024),
@@ -324,5 +327,9 @@ final_df_long <- final_df_long %>%
   st_drop_geometry()
 
 if (FALSE) {
+  # shared drive: 
   write.csv(final_df_long, ".../.../.../.../.../2-aims/aim3/3_processed_data/zip3_exposure_dataset.csv")
+  
+  # repo directory:
+  write.csv(final_df_long, "data/processed_data/zip3_exposure_dataset.csv")
 }
