@@ -355,8 +355,9 @@ threeweek_avgs <- short_dat %>%
   summarise(mean_IR = mean(case_rate_per10k)) %>%
   ungroup()
 
-t.test(mean_IR ~ hurricane_3week, 
-       data = threeweek_avgs, mu = 0, conf.level = 0.95, 
+t.test(y = threeweek_avgs$mean_IR[threeweek_avgs$hurricane_3week == TRUE], 
+       x = threeweek_avgs$mean_IR[threeweek_avgs$hurricane_3week == FALSE], 
+       data = threeweek_avgs, mu = 0, conf.level = 0.95, paired = TRUE,
        alternative = "two.sided", var.equal = FALSE)
 
 summary(
