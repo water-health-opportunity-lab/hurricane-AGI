@@ -48,7 +48,7 @@ agg_exposure_dat <- dat %>%
             tmean = mean(tmean)) %>%
   ungroup() %>%
   mutate(case_rate_per10k = sum_events/sum_pop*1e4,
-         inundation_exposure_plot = ifelse(inundation_exposure, "Exposed", "Control"))
+         inundation_exposure_plot = ifelse(inundation_exposure, "Flooded", "Non-flooded"))
 
 dat_masked <- dat_masked %>%
   mutate(date = as.Date(date))
@@ -65,7 +65,7 @@ agg_exposure_dat_masked <- dat_masked %>%
             tmean = mean(tmean)) %>%
   ungroup() %>%
   mutate(case_rate_per10k = sum_events/sum_pop*1e4,
-         inundation_exposure_plot = ifelse(inundation_exposure, "Exposed", "Control"))
+         inundation_exposure_plot = ifelse(inundation_exposure, "Flooded", "Non-flooded"))
 
 agg_exposure_quartiles_dat <- dat %>%
   group_by(date, year, quartile_flood_value) %>%
@@ -82,7 +82,7 @@ agg_exposure_quartiles_dat <- dat %>%
 
 dat <- dat %>%
   mutate(case_rate_per10k = n_events/total_population*1e4,
-         inundation_exposure_plot = ifelse(inundation_exposure, "Exposed", "Control"))
+         inundation_exposure_plot = ifelse(inundation_exposure, "Flooded", "Non-flooded"))
 
 # evidence of slightly seasonality (higher in winter, lower in spring/summer/fall)
   # and increasing trend by year:
@@ -159,7 +159,7 @@ ggplot(agg_exposure_dat %>% filter(year == 2024 & month(date) >= 6),
   geom_label(x = as.Date('2024-11-05'), y = 1200, label = "8 weeks", size = 2,
              color = "black", fill = NA, fontface = "bold") +
   labs(x = "Date", y = "Total AGI visits") +
-  scale_color_manual(values = c("Exposed" = "darkblue", "Control" = "darkred"),
+  scale_color_manual(values = c("Flooded" = "darkblue", "Non-flooded" = "darkred"),
                      name = "") +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, vjust = 0.75),
@@ -193,7 +193,7 @@ ggplot(agg_exposure_dat %>% filter(year == 2024 & month(date) >= 6),
              color = "black", fill = NA, fontface = "bold") +
   labs(x = "Date", y = "AGI visits per 10k") +
   ylim(0.5, 3.3) +
-  scale_color_manual(values = c("Exposed" = "darkblue", "Control" = "darkred"),
+  scale_color_manual(values = c("Flooded" = "darkblue", "Non-flooded" = "darkred"),
                      name = "") +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, vjust = 0.75),
@@ -227,7 +227,7 @@ ggplot(agg_exposure_dat_masked %>% filter(year == 2024 & month(date) >= 6),
              color = "black", fill = NA, fontface = "bold") +
   labs(x = "Date", y = "AGI visits per 10k") +
   ylim(0.5, 4.5) +
-  scale_color_manual(values = c("Exposed" = "darkblue", "Control" = "darkred"),
+  scale_color_manual(values = c("Flooded" = "darkblue", "Non-flooded" = "darkred"),
                      name = "") +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, vjust = 0.75),
@@ -334,7 +334,7 @@ ggplot(dat %>% filter(year == 2024 & month(date) >= 6),
   geom_label(x = as.Date('2024-11-05'), y = 10.25, label = "8 weeks", size = 2.5,
              color = "black") +
   labs(x = "Date", y = "AGI visits per 10k") +
-  scale_color_manual(values = c("Exposed" = "darkblue", "Control" = "darkred"),
+  scale_color_manual(values = c("Flooded" = "darkblue", "Non-flooded" = "darkred"),
                      name = "") +
   ylim(0, 10.5) +
   theme_bw() +
