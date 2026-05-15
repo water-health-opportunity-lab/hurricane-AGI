@@ -246,6 +246,28 @@ if (FALSE) {
   ggsave("figures/mean_percent_inundated_map.png", dpi = 600, width = 7, height = 5)
 }
 
+# map of mean % area inundated
+ggplot(final_df %>% 
+         mutate(inundation_exposure = ifelse(inundation_exposure == TRUE, "Flooded", "Non-flooded"))) +
+  geom_sf(aes(fill = inundation_exposure), color="grey") +
+  scale_fill_manual(values = c("Non-flooded" = "white", "Flooded" = "darkblue"),
+                    name = "") +
+  theme_void() +
+  labs(title = "Inundation exposure assignment", 
+       subtitle = "Exposure groups assigned in CITS models based on whether the mean % area\nflooded was over 50%.") +
+  theme(strip.background = element_rect(fill = NA),
+        strip.text = element_text(face = "bold"),
+        plot.title = element_text(face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+        axis.text = element_blank(),
+        legend.position = "bottom",
+        legend.key.height = unit(0.4, 'cm'),
+        legend.key.width = unit(0.8, 'cm'),
+        legend.spacing = unit(1, unit = 'cm'))
+
+if (FALSE) {
+  ggsave("figures/exposure_assignment_map.png", dpi = 600, width = 7, height = 5)
+}
 
 #############################################################################
 # making a gif of inundation time series over the zip3 units

@@ -67,18 +67,18 @@ agg_exposure_dat_masked <- dat_masked %>%
   mutate(case_rate_per10k = sum_events/sum_pop*1e4,
          inundation_exposure_plot = ifelse(inundation_exposure, "Flooded", "Non-flooded"))
 
-agg_exposure_quartiles_dat <- dat %>%
-  group_by(date, year, quartile_flood_value) %>%
-  summarise(sum_events = sum(n_events),
-            sum_pop = sum(total_population),
-            hurricane_3week = unique(hurricane_3week),
-            hurricane_5week = unique(hurricane_5week),
-            hurricane_8week = unique(hurricane_8week),
-            # mean of means for ppt and temp
-            ppt_mean = mean(ppt_mean),
-            tmean = mean(tmean)) %>%
-  ungroup() %>%
-  mutate(case_rate_per10k = sum_events/sum_pop*1e4)
+# agg_exposure_quartiles_dat <- dat %>%
+#   group_by(date, year, quartile_flood_value) %>%
+#   summarise(sum_events = sum(n_events),
+#             sum_pop = sum(total_population),
+#             hurricane_3week = unique(hurricane_3week),
+#             hurricane_5week = unique(hurricane_5week),
+#             hurricane_8week = unique(hurricane_8week),
+#             # mean of means for ppt and temp
+#             ppt_mean = mean(ppt_mean),
+#             tmean = mean(tmean)) %>%
+#   ungroup() %>%
+#   mutate(case_rate_per10k = sum_events/sum_pop*1e4)
 
 dat <- dat %>%
   mutate(case_rate_per10k = n_events/total_population*1e4,
@@ -237,8 +237,8 @@ if (FALSE) {
   ggsave("figures/treatment_group_level_rate_trend_v2.png", dpi = 600, height = 4, width = 6.5)
 }
 
-ggplot(agg_exposure_quartiles_dat %>% filter(year == 2024 & month(date) >= 6), 
-       aes(x = date, y = ppt_mean, color = as.factor(quartile_flood_value))) +
+ggplot(agg_exposure_dat %>% filter(year == 2024 & month(date) >= 6), 
+       aes(x = date, y = ppt_mean, color = as.factor(inundation_exposure_plot))) +
   geom_rect(aes(xmin = as.Date('2024-09-27'),
                 xmax = as.Date("2024-11-15"),
                 ymin = -Inf,
@@ -260,7 +260,8 @@ ggplot(agg_exposure_quartiles_dat %>% filter(year == 2024 & month(date) >= 6),
   geom_label(x = as.Date('2024-11-05'), y = 15.5, label = "8 weeks", size = 2,
              color = "black", fill = NA, fontface = "bold") +
   labs(x = "Date", y = "Mean precipitation [mm]") +
-  scale_color_brewer(name = "Flooding quartile") +
+  scale_color_brewer(name = "Exposed group") +
+  ylim(0, 16) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, vjust = 0.75),
         legend.position = "bottom")
@@ -312,7 +313,7 @@ if (FALSE) {
 }
 
 ggplot(dat %>% filter(year == 2024 & month(date) >= 6), 
-       aes(x = date, y = case_rate_per10k, color = inundation_exposure_plot, group = zip3)) +
+       aes(x = date, y = case_rate_per10k, color = inundation_exposure_plot)) +
   geom_rect(aes(xmin = as.Date('2024-09-27'),
                 xmax = as.Date("2024-11-15"),
                 ymin = -Inf,
@@ -327,22 +328,50 @@ ggplot(dat %>% filter(year == 2024 & month(date) >= 6),
                 ymax = Inf), fill = 'darkgrey', color = "darkgrey", alpha = 0.5) +
   geom_point() +
   geom_line() +
-  geom_label(x = as.Date('2024-10-04'), y = 10.25, label = "3 weeks", size = 2.5,
-             color = "black") +
-  geom_label(x = as.Date('2024-10-18'), y = 10.25, label = "5 weeks", size = 2.5,
-             color = "black") +
-  geom_label(x = as.Date('2024-11-05'), y = 10.25, label = "8 weeks", size = 2.5,
-             color = "black") +
+  scale_y_continuous(limits = c(0, NA)) +
+  facet_wrap(~zip3, scales = "free_y") +
   labs(x = "Date", y = "AGI visits per 10k") +
   scale_color_manual(values = c("Flooded" = "darkblue", "Non-flooded" = "darkred"),
                      name = "") +
-  ylim(0, 10.5) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, vjust = 0.75),
         legend.position = "bottom")
 
 if (FALSE) {
-  ggsave("figures/zip3_level_rate_trend.png", dpi = 600, height = 4, width = 6)
+  ggsave("figures/zip3_level_rate_trend.png", dpi = 600, height = 7, width = 9)
+}
+
+dat_masked <- dat_masked %>%
+  mutate(case_rate_per10k = n_events/total_population*1e4,
+         inundation_exposure_plot = ifelse(inundation_exposure, "Flooded", "Non-flooded"))
+
+ggplot(dat_masked %>% filter(year == 2024 & month(date) >= 6), 
+       aes(x = date, y = case_rate_per10k, color = inundation_exposure_plot)) +
+  geom_rect(aes(xmin = as.Date('2024-09-27'),
+                xmax = as.Date("2024-11-15"),
+                ymin = -Inf,
+                ymax = Inf), fill = 'lightgrey', color = "lightgrey", alpha = 0.5) +
+  geom_rect(aes(xmin = as.Date('2024-09-27'),
+                xmax = as.Date("2024-10-25"),
+                ymin = -Inf,
+                ymax = Inf), fill = 'grey', color = "grey", alpha = 0.5) +
+  geom_rect(aes(xmin = as.Date('2024-09-27'),
+                xmax = as.Date("2024-10-11"),
+                ymin = -Inf,
+                ymax = Inf), fill = 'darkgrey', color = "darkgrey", alpha = 0.5) +
+  geom_point() +
+  geom_line() +
+  scale_y_continuous(limits = c(0, NA)) +
+  facet_wrap(~zip3, scales = "free_y") +
+  labs(x = "Date", y = "AGI visits per 10k") +
+  scale_color_manual(values = c("Flooded" = "darkblue", "Non-flooded" = "darkred"),
+                     name = "") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.75),
+        legend.position = "bottom")
+
+if (FALSE) {
+  ggsave("figures/masked_zip3_level_rate_trend.png", dpi = 600, height = 7, width = 9)
 }
 
 ###############################################################################

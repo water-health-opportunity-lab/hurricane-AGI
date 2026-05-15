@@ -81,14 +81,26 @@ zip3_wells <- nc_final %>%
     by = "zip3"
   )
 
-# visualizing as test
 ggplot(zip3_wells) +
   geom_sf(aes(fill = weighted_percent_wells), color = "white", size = 0.2) +
-  scale_fill_gradient(low = "lightblue", high = "darkblue", 
-                       name = "% Private Well Users", 
+  scale_fill_gradient(low = "white", high = "darkgreen", 
+                       name = "", 
                        labels = scales::percent_format(scale=1)) +
-  theme_minimal() +
-  labs(title="Percent of Private Well Users by Zip3")
+  theme_void() +
+  labs(title = "Percent private well users by zip3") +
+  theme(strip.background = element_rect(fill = NA),
+        strip.text = element_text(face = "bold"),
+        plot.title = element_text(face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+        axis.text = element_blank(),
+        legend.position = "bottom",
+        legend.key.height = unit(0.4, 'cm'),
+        legend.key.width = unit(0.8, 'cm'),
+        legend.spacing = unit(1, unit = 'cm'))
+
+if (FALSE) {
+  ggsave("figures/private_well_map.png", dpi = 600, width = 7, height = 5)
+}
 
 # another check for previously missing BGs
   # ggplot(bg_with_zip3 %>% filter(is.na(zip3))) +

@@ -10,8 +10,10 @@ library(tigris)
 library(tidyverse)
 
 dat <- read_csv("data/processed_data/analytic_dataset.csv")
+dat$zip3 <- as.character(dat$zip3)
 
 dat_masked <- read.csv("data/processed_data/dataset_with_added_masked_units.csv")
+dat_masked$zip3 <- as.character(dat_masked$zip3)
 
 state_by_week <- read_csv("data/processed_data/state_by_week_with_added_masked_units.csv")
 
@@ -60,6 +62,44 @@ eval_SAC.f <- function(hurricane_week = NULL, model = NULL, model_dataset = NULL
   
 }
 
+dat_neighbors <- dat %>%
+    group_by(zip3) %>%
+    slice(1) %>%
+    mutate(zip3 = as.character(zip3)) %>%
+    ungroup() %>%
+    mutate(id = as.factor(row_number()))
+
+dat_neighbors <- left_join(nc_zip3_geom, dat_neighbors, by = "zip3")
+dat_neighbors <- st_as_sf(dat_neighbors, coords = geometry, crs = st_crs(nc_zip3_geom))
+  
+nb <- poly2nb(dat_neighbors, queen = TRUE)
+
+id_neighbors.f <- function(row_numbers = NULL, zip_dataset = dat_neighbors) {
+    
+  one_row <- zip_dataset[row_numbers,]
+  
+  one_id <- one_row$id
+  
+  one_row$neighbors <- list(nb[[row_numbers]])
+  
+  return(one_row)
+  
+}
+
+dat_neighbors <- map_dfr(1:20, ~id_neighbors.f(row_numbers = .x))
+dat_neighbors <- dat_neighbors %>% 
+  dplyr::select(zip3, id, neighbors) %>%
+  st_drop_geometry()
+
+dat <- left_join(dat, dat_neighbors)
+
+dat <- dat %>% 
+  group_by(week_start) %>% rowwise() %>%
+  mutate(neighbor_weight = 1/length(unlist(neighbors))) %>%
+  mutate(neighbor_cases_weighted = sum( neighbor_weight * dat$n_events[dat$id %in% unlist(neighbors) &  dat$week_start == week_start]),
+         neighbor_cases_unweighted = sum( dat$n_events[dat$id %in% unlist(neighbors) & dat$week_start == week_start])) %>%
+  ungroup()
+  
 # TODO: function on temporal autocorrelation in model residuals
 
 ###############################################################################
@@ -68,84 +108,109 @@ five_weeks <- unique(dat$week_start[dat$hurricane_5week])
 eight_weeks <- unique(dat$week_start[dat$hurricane_8week])
 
 # primary model:
+m_initial <- glm(n_events ~ inundation_exposure*hurricane_3week +
+                   inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month), 
+                 offset = log(total_population),
+                 data = dat, family = "quasipoisson")
+
+initial_three_week_SAC <- map_dfr(three_weeks, 
+                                  ~eval_SAC.f(hurricane_week = .x, 
+                                              model_dataset = dat, model = m_initial))
+
+# including spatially lagged cases
 m1a <- glm(n_events ~ inundation_exposure*hurricane_3week +
-            inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month), 
-          offset = log(total_population),
-          data = dat, family = "quasipoisson")
+             inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
+             log(neighbor_cases_weighted + 1), 
+           offset = log(total_population),
+           data = dat, family = "quasipoisson")
 
 three_week_SAC <- map_dfr(three_weeks, 
-                          ~eval_SAC.f(hurricane_week = .x, model_dataset = dat, model = m1a))
+                          ~eval_SAC.f(hurricane_week = .x, 
+                                      model_dataset = dat, model = m1a))
 
-  # # Check the residuals by plotting against time
-  # res2 <- residuals(m2, type="deviance")
-  # pacf(res2)
+  # check the residuals by plotting against time:
+  # dat$resid <- residuals(m1a, type="deviance")
   # 
-  # plot(dat$days_since_anchor,res2,ylim=c(-30,30),pch=19,cex=0.7,col=grey(0.6),
+  # plot(dat$weeks_since_anchor, dat$resid,
+  #      ylim=c(-60,60),pch=19,cex=0.7,col=grey(0.6),
   #      main="Residuals over time",ylab="Deviance residuals",xlab="Date")
   # abline(h=0,lty=2,lwd=2)
 
-# no separate pre-trend for exposed/control
-  # m2 <- glm(n_events ~ inundation_exposure*hurricane_3week +
-  #              as.factor(year) + as.factor(month), 
-  #            offset = log(total_population),
-  #            data = dat, family = "quasipoisson")
-
 # varying hurricane period:
 m1b <- glm(n_events ~ inundation_exposure*hurricane_5week +
-             inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month), 
+             inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
+             log(neighbor_cases_weighted + 1), 
            offset = log(total_population),
            data = dat, family = "quasipoisson")
+
+  # # check the residuals by plotting against time
+  # dat$resid <- residuals(m1b, type="deviance")
+  # 
+  # plot(dat$weeks_since_anchor, dat$resid,
+  #      ylim=c(-60,60),pch=19,cex=0.7,col=grey(0.6),
+  #      main="Residuals over time",ylab="Deviance residuals",xlab="Date")
+  # abline(h=0,lty=2,lwd=2)
 
 five_week_SAC <- map_dfr(five_weeks, 
                           ~eval_SAC.f(hurricane_week = .x, model_dataset = dat, model = m1b))
 
 m1c <- glm(n_events ~ inundation_exposure*hurricane_8week +
-             inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month), 
+             inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
+             log(neighbor_cases_weighted + 1), 
            offset = log(total_population),
            data = dat, family = "quasipoisson")
 
 eight_week_SAC <- map_dfr(eight_weeks, 
                           ~eval_SAC.f(hurricane_week = .x, model_dataset = dat, model = m1c))
 
+  # # check the residuals by plotting against time
+  # dat$resid <- residuals(m1c, type="deviance")
+  # 
+  # plot(dat$weeks_since_anchor, dat$resid,
+  #      ylim=c(-60,60),pch=19,cex=0.7,col=grey(0.6),
+  #      main="Residuals over time",ylab="Deviance residuals",xlab="Date")
+  # abline(h=0,lty=2,lwd=2)
+
 # season fixed effects
 m2 <- glm(n_events ~ inundation_exposure*hurricane_3week +
-            inundation_exposure*as.factor(year) + inundation_exposure*season, 
+            inundation_exposure*as.factor(year) + inundation_exposure*season +
+            log(neighbor_cases_weighted + 1), 
           offset = log(total_population),
           data = dat, family = "quasipoisson")
 
 # negative binomial model
 m3a <- glm.nb(n_events ~ inundation_exposure*hurricane_3week +
                 inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
-                offset(log(total_population)),
+                log(neighbor_cases_weighted + 1) + offset(log(total_population)),
               data = dat)
 
 m3b <- glm.nb(n_events ~ inundation_exposure*hurricane_5week +
                 inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
-                offset(log(total_population)),
+                log(neighbor_cases_weighted + 1) + offset(log(total_population)),
               data = dat)
 
 m3c <- glm.nb(n_events ~ inundation_exposure*hurricane_8week +
                 inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
-                offset(log(total_population)),
+                log(neighbor_cases_weighted + 1) + offset(log(total_population)),
               data = dat)
 
 # adding temperature variables:
 # incl mean daily temp and humidity
 m4a <- glm(n_events ~ inundation_exposure*hurricane_3week +
             inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
-            tdmean + humidity, 
+            tdmean + humidity + log(neighbor_cases_weighted + 1), 
           offset = log(total_population),
           data = dat, family = "quasipoisson")
-
+  
   # similar results observed regardless of event interval:
   # m4b <- glm(n_events ~ inundation_exposure*hurricane_5week +
   #              inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
-  #              tdmean + humidity, 
+  #              tdmean + humidity + log(neighbor_cases_weighted + 1), 
   #            offset = log(total_population),
   #            data = dat, family = "quasipoisson")
   # m4c <- glm(n_events ~ inundation_exposure*hurricane_8week +
   #              inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
-  #              tdmean + humidity,
+  #              tdmean + humidity + log(neighbor_cases_weighted + 1),
   #            offset = log(total_population),
   #            data = dat, family = "quasipoisson")
 
@@ -155,7 +220,7 @@ three_week_SAC_weather1 <- map_dfr(three_weeks,
 # incl max temp and humidity
 m4b <- glm(n_events ~ inundation_exposure*hurricane_3week +
             inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
-            tmax + humidity, 
+            tmax + humidity + log(neighbor_cases_weighted + 1), 
           offset = log(total_population),
           data = dat, family = "quasipoisson")
 
@@ -165,7 +230,7 @@ three_week_SAC_weather2 <- map_dfr(three_weeks,
 # incl min temp and humidity
 m4c <- glm(n_events ~ inundation_exposure*hurricane_3week +
              inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
-             tmin + humidity, 
+             tmin + humidity + log(neighbor_cases_weighted + 1), 
            offset = log(total_population),
            data = dat, family = "quasipoisson")
 
@@ -176,43 +241,48 @@ three_week_SAC_weather3 <- map_dfr(three_weeks,
 dat_excl5weeks <- dat %>% filter( !(hurricane_8week & hurricane_3week == F))
 
 m5 <- glm(n_events ~ inundation_exposure*hurricane_3week +
-            inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month),
+            inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
+            log(neighbor_cases_weighted + 1),
           offset = log(total_population),
           data = dat_excl5weeks, family = "quasipoisson")
 
-# comparing top and bottom quartiles of flooding metric
-dat_quartiles <- dat %>%
-  filter(quartile_flood_value %in% c(1, 4)) %>%
-  mutate(quartile_flood_value = as.factor(quartile_flood_value))
-
-m1a_quartiles <- glm(n_events ~ quartile_flood_value*hurricane_3week +
-                      quartile_flood_value*as.factor(year) + quartile_flood_value*as.factor(month), 
-                    offset = log(total_population),
-                    data = dat_quartiles, family = "quasipoisson")
-
-m1b_quartiles <- glm(n_events ~ quartile_flood_value*hurricane_5week +
-                       quartile_flood_value*as.factor(year) + quartile_flood_value*as.factor(month), 
-                     offset = log(total_population),
-                     data = dat_quartiles, family = "quasipoisson")
-
-m1c_quartiles <- glm(n_events ~ quartile_flood_value*hurricane_8week +
-                       quartile_flood_value*as.factor(year) + quartile_flood_value*as.factor(month), 
-                     offset = log(total_population),
-                     data = dat_quartiles, family = "quasipoisson")
+# TODO: if this is included, we need to reprocess data to include quartiles:
+  # # comparing top and bottom quartiles of flooding metric
+  # dat_quartiles <- dat %>%
+  #   filter(quartile_flood_value %in% c(1, 4)) %>%
+  #   mutate(quartile_flood_value = as.factor(quartile_flood_value))
+  # 
+  # m1a_quartiles <- glm(n_events ~ quartile_flood_value*hurricane_3week +
+  #                       quartile_flood_value*as.factor(year) + quartile_flood_value*as.factor(month) +
+  #                       log(neighbor_cases_weighted + 1), 
+  #                     offset = log(total_population),
+  #                     data = dat_quartiles, family = "quasipoisson")
+  # 
+  # m1b_quartiles <- glm(n_events ~ quartile_flood_value*hurricane_5week +
+  #                        quartile_flood_value*as.factor(year) + quartile_flood_value*as.factor(month) +
+  #                        log(neighbor_cases_weighted + 1), 
+  #                      offset = log(total_population),
+  #                      data = dat_quartiles, family = "quasipoisson")
+  # 
+  # m1c_quartiles <- glm(n_events ~ quartile_flood_value*hurricane_8week +
+  #                        quartile_flood_value*as.factor(year) + quartile_flood_value*as.factor(month) +
+  #                        log(neighbor_cases_weighted + 1), 
+  #                      offset = log(total_population),
+  #                      data = dat_quartiles, family = "quasipoisson")
 
 # non-controlled ITS model at the zip3 level:
 m1a_ITS <- glm(n_events ~ hurricane_3week +
-            as.factor(year) + as.factor(month), 
+            as.factor(year) + as.factor(month) + log(neighbor_cases_weighted + 1), 
             offset = log(total_population),
             data = dat, family = "quasipoisson")
 
 m1b_ITS <- glm(n_events ~ hurricane_5week +
-                as.factor(year) + as.factor(month), 
+                as.factor(year) + as.factor(month) + log(neighbor_cases_weighted + 1), 
               offset = log(total_population),
               data = dat, family = "quasipoisson")
 
 m1c_ITS <- glm(n_events ~ hurricane_8week +
-                as.factor(year) + as.factor(month), 
+                as.factor(year) + as.factor(month) + log(neighbor_cases_weighted + 1), 
               offset = log(total_population),
               data = dat, family = "quasipoisson")
 
@@ -220,18 +290,21 @@ dat$n_nonfoodborne <- dat$n_events - dat$n_foodborne
 
 # excluding foodborne illnesses
 m1a_exclfoodborne <- glm(n_nonfoodborne ~ inundation_exposure*hurricane_3week +
-                         inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month), 
+                         inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
+                         log(neighbor_cases_weighted + 1), 
                        offset = log(total_population),
                        data = dat, family = "quasipoisson")
 
   # similar results observed:
   # m1a_exclfoodborne <- glm(n_nonfoodborne ~ inundation_exposure*hurricane_5week +
-  #                            inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month), 
+  #                            inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
+  #                            log(neighbor_cases_weighted + 1),
   #                          offset = log(total_population), 
   #                          data = dat, family = "quasipoisson")
   # 
   # m1c_exclfoodborne <- glm(n_nonfoodborne ~ inundation_exposure*hurricane_8week +
   #                            inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month), 
+  #                            log(neighbor_cases_weighted + 1),
   #                          offset = log(total_population),
   #                          data = dat, family = "quasipoisson")
 
@@ -362,11 +435,11 @@ ggplot(all_final_summary %>%
   geom_point(aes(y = model_type, x = estimate), 
              color = "black", size = 4, position = position_dodge(width = 0.6)) +
   geom_text(aes(y = model_type, x = estimate, label = plot_estimate), 
-            color = "black", size = 4, vjust = -1) +
+            color = "black", size = 4, vjust = -1.75) +
   # scale_y_continuous(labels = scales::percent_format(scale = 1)) +
   scale_color_manual(values = MetBrewer::met.brewer(name = "Egypt")) +
   geom_vline(xintercept = 1, color = "darkgrey", linetype = "dashed") +
-  xlim(0.25, 2) +
+  xlim(0.25, 2.2) +
   labs(x = "Incidence rate ratio", y = "") +
   theme_bw() +
   theme(panel.grid.minor.x = element_blank(), 
@@ -378,7 +451,7 @@ ggplot(all_final_summary %>%
         plot.margin = unit(c(0.1,0.1,0.1,0.1), "cm"))
 
 if (FALSE) {
-  ggsave("figures/main_results.png", dpi = 600, height = 3, width = 6)
+  ggsave("figures/main_results.png", dpi = 600, height = 3, width = 5)
 }
 
 ggplot(all_final_summary %>% 
@@ -466,3 +539,4 @@ if (FALSE) {
 }
 
 # TODO: insert plots w/ quartiles results, private well resuts, and hurricane florence results
+

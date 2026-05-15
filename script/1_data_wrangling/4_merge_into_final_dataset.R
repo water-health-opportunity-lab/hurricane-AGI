@@ -109,7 +109,15 @@ join_outcomes <- join_outcomes %>%
   mutate(days_since_anchor = ifelse(is.na(days_since_anchor), 
                                     date - as.Date("2016-01-01"), days_since_anchor),
          weeks_since_anchor = ifelse(is.na(weeks_since_anchor), floor(days_since_anchor / 7), weeks_since_anchor))
-         
+
+join_outcomes <- join_outcomes %>%
+  group_by(zip3) %>%
+  mutate(lag1_n_events = dplyr::lag(n_events, n = 1, default = 0),
+         lag2_n_events = dplyr::lag(n_events, n = 2, default = 0),
+         lag3_n_events = dplyr::lag(n_events, n = 3, default = 0),
+         lag10_n_events = dplyr::lag(n_events, n = 10, default = 0)) %>%
+  ungroup()
+
 join_outcomes <- join_outcomes %>%       
   filter(year(as.Date(join_outcomes$week_start, format = "%Y%m%d")) != 2016)
 
@@ -142,7 +150,7 @@ exposure$zip3 <- as.factor(exposure$zip3)
 
 join_outcomes_exposure <- left_join(join_outcomes, 
                                     exposure %>% 
-                                      dplyr::select(zip3:year),
+                                      dplyr::select(zip3:weighted_percent_wells),
                                     by = c("zip3", "year"))
 
 join_outcomes_exposure <- join_outcomes_exposure %>%
