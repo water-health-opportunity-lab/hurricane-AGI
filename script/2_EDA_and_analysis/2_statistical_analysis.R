@@ -356,8 +356,36 @@ m1c_ITS_state <- glm(n_events ~ hurricane_8week +
                     data = state_by_week, family = "quasipoisson")
 
 ################################################################################
-# TODO: secondary analyses with private well populations
+##### secondary analyses with private well populations
+# this uses an arbitrary cutpoint to define groups, 
+  # but other cutpoints and a continuous measure yielded similar results
+dat <- dat %>%
+  mutate(high_private_wells = ifelse(weighted_percent_wells > 30, TRUE, FALSE))
 
+m1a_private_wells <- glm(n_events ~ high_private_wells*hurricane_3week +
+                         high_private_wells*as.factor(year) + high_private_wells*as.factor(month) +
+                         log(neighbor_cases_weighted + 1), 
+                       offset = log(total_population),
+                       data = dat, family = "quasipoisson")
+
+  # similar conclusion when using continuous measure:
+    # m1a_private_wells <- glm(n_events ~ weighted_percent_wells*hurricane_3week +
+    #                            weighted_percent_wells*as.factor(year) + weighted_percent_wells*as.factor(month) +
+    #                            log(neighbor_cases_weighted + 1), 
+    #                          offset = log(total_population),
+    #                          data = dat, family = "quasipoisson")
+
+m1b_private_wells <- glm(n_events ~ high_private_wells*hurricane_5week +
+                           high_private_wells*as.factor(year) + high_private_wells*as.factor(month) +
+                           log(neighbor_cases_weighted + 1), 
+                         offset = log(total_population),
+                         data = dat, family = "quasipoisson")
+
+m1c_private_wells <- glm(n_events ~ high_private_wells*hurricane_8week +
+                           high_private_wells*as.factor(year) + high_private_wells*as.factor(month) +
+                           log(neighbor_cases_weighted + 1), 
+                         offset = log(total_population),
+                         data = dat, family = "quasipoisson")
 
 ################################################################################
 all_models <- ls()[grepl("^m[[:digit:]]", ls())]
@@ -375,17 +403,20 @@ all_final_coefs <- all_final_coefs %>%
                                 model_id == 3 ~ "Non-controlled ITS (3-week)",
                                 model_id == 4 ~ "Non-controlled ITS: state-level (3-week)",
                                 model_id == 5 ~ "CITS: incl. masked units (3-week)",
-                                model_id == 6 ~ "CITS: top and bottom flooding quartiles (3-week)",
+                                model_id == 6 ~ "CITS: private well groups (3-week)",
+                                # model_id == 7 ~ "CITS: top and bottom flooding quartiles (3-week)",
                                 model_id == 7 ~ "CITS: main model (5-week)",
                                 model_id == 8 ~ "Non-controlled ITS (5-week)",
                                 model_id == 9 ~ "Non-controlled ITS: state-level (5-week)",
                                 model_id == 10 ~ "CITS: incl. masked units (5-week)",
-                                model_id == 11 ~ "CITS: top and bottom flooding quartiles (5-week)",
+                                # model_id == 11 ~ "CITS: top and bottom flooding quartiles (5-week)",
+                                model_id == 11 ~ "CITS: private well groups (5-week)",
                                 model_id == 12 ~ "CITS: main model (8-week)",
                                 model_id == 13 ~ "Non-controlled ITS (8-week)",
                                 model_id == 14 ~ "Non-controlled ITS: state-level (8-week)",
                                 model_id == 15 ~ "CITS: incl. masked units (8-week)",
-                                model_id == 16 ~ "CITS: top and bottom flooding quartiles (8-week)",
+                                # model_id == 16 ~ "CITS: top and bottom flooding quartiles (8-week)",
+                                model_id == 16 ~ "CITS: private well groups (8-week)",
                                 model_id == 17 ~ "CITS: season FEs",
                                 model_id == 18 ~ "CITS: negative binomial (3-week)",
                                 model_id == 19 ~ "CITS: negative binomial (5-week)",
@@ -395,6 +426,7 @@ all_final_coefs <- all_final_coefs %>%
                                 model_id == 23 ~ "CITS: min daily temp + humidity",
                                 model_id == 24 ~ "CITS: excl. 5-week period"),
          model_group = case_when(grepl("CITS: main model", model_type) ~ "CITS: main model",
+                                 grepl("CITS: private well", model_type) ~ "CITS: private wells",
                                  grepl("CITS: incl. masked units", model_type) ~ "CITS: incl. masked events",
                                  grepl("CITS: top and bottom quartiles", model_type) ~ "CITS: top and bottom quartiles",
                                  grepl("Non-controlled ITS", model_type) ~ "ITS",
@@ -437,7 +469,7 @@ ggplot(all_final_summary %>%
   geom_text(aes(y = model_type, x = estimate, label = plot_estimate), 
             color = "black", size = 4, vjust = -1.75) +
   # scale_y_continuous(labels = scales::percent_format(scale = 1)) +
-  scale_color_manual(values = MetBrewer::met.brewer(name = "Egypt")) +
+  scale_color_manual(values = "darkblue") +
   geom_vline(xintercept = 1, color = "darkgrey", linetype = "dashed") +
   xlim(0.25, 2.2) +
   labs(x = "Incidence rate ratio", y = "") +
@@ -455,10 +487,38 @@ if (FALSE) {
 }
 
 ggplot(all_final_summary %>% 
+         filter(model_group == "CITS: private wells" &
+                  grepl("high_private_wellsTRUE:hurricane", term))) +
+  geom_errorbar(aes(y = model_type, x = estimate,
+                    xmin = conf.low, xmax = conf.high, color = model_group),
+                width = 0.5, linewidth = 2, position = position_dodge(width = 0.6)) +
+  geom_point(aes(y = model_type, x = estimate), 
+             color = "black", size = 4, position = position_dodge(width = 0.6)) +
+  geom_text(aes(y = model_type, x = estimate, label = plot_estimate), 
+            color = "black", size = 4, vjust = -1.75) +
+  # scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+  scale_color_manual(values = "darkgreen") +
+  geom_vline(xintercept = 1, color = "darkgrey", linetype = "dashed") +
+  xlim(0.25, 2.2) +
+  labs(x = "Incidence rate ratio", y = "") +
+  theme_bw() +
+  theme(panel.grid.minor.x = element_blank(), 
+        panel.grid.major.x = element_blank(),
+        axis.text.y = element_text(size = 10, color = "black"),
+        axis.text.x = element_text(size = 10, color = "black"),
+        axis.title = element_text(size = 12, color = "black", face = "bold"),
+        legend.position = "none",
+        plot.margin = unit(c(0.1,0.1,0.1,0.1), "cm"))
+
+if (FALSE) {
+  ggsave("figures/private_well_results.png", dpi = 600, height = 3, width = 5)
+}
+
+ggplot(all_final_summary %>% 
          filter(model_group == "ITS" & grepl("hurricane", term))) +
   geom_errorbar(aes(y = model_type, x = estimate,
                     xmin = conf.low, xmax = conf.high, color = model_group),
-                width = 0.5, size = 2, position = position_dodge(width = 0.6)) +
+                width = 0.5, linewidth = 2, position = position_dodge(width = 0.6)) +
   geom_point(aes(y = model_type, x = estimate), 
              color = "black", size = 4, position = position_dodge(width = 0.6)) +
   geom_text(aes(y = model_type, x = estimate, label = plot_estimate), 
@@ -537,6 +597,3 @@ ggplot(all_final_summary %>%
 if (FALSE) {
   ggsave("figures/sensitivity_results.png", dpi = 600, height = 4, width = 6)
 }
-
-# TODO: insert plots w/ quartiles results, private well resuts, and hurricane florence results
-
