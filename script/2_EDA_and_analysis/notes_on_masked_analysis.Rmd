@@ -13,19 +13,15 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Let $Y_{gt}$ denote the observed count in the masked ZIP2 region $g$ at week $t$ and let $Y^*_{zt}$ denote the latent unobserved count in the compatible ZIP3 region $z$ forming $g$ with the constraint:
 
-$$
- Y_{gt} = \Sigma_{z \ \epsilon \ g}Y^*_{gt}
-$$
+$$ Y_{gt} = \Sigma_{z \ \epsilon \ g}Y^*_{gt}$$
 
 So we can model each:
 
-$$
-Y^*_{zt} \sim \text{Multinomial}(Y_{gt}, p_{zt})
-$$
+$$Y^*_{zt} \sim \text{Multinomial}(Y_{gt}, p_{zt})$$
 
 where $p_{zt}$ is informed by population size, baseline AGI rates, historical ZIP3 trends, flooding severity, seasonality, and perhaps neighboring ZIP3 behavior.
 
-The intuition is that the observed ZIP2 total is fixed, while the true ZIP3 composition is only partially known. A population-only split is one special case of this model, with p_zt proportional to population. This is a bit more stronger because it lets the allocation probabilities borrow strength from geography and pre-event data, which is exactly the kind of structure hierarchical models are designed to capture.
+The intuition is that the observed ZIP2 total is fixed, while the true ZIP3 composition is only partially known. A population-only split is one special case of this model, with p_zt proportional to population. This is a bit stronger because it lets the allocation probabilities borrow strength from geography and pre-event data, which is exactly the kind of structure hierarchical models are designed to capture.
 
 I would be cautious, though, about using post-event outcomes directly in the allocation model, because that could leak treatment information into the imputation step. Ideally, the allocation probabilities would be estimated from pre-hurricane history and stable covariates, then used to distribute the masked counts in the post-period.
 
@@ -38,3 +34,5 @@ outcome for each week:
 289: total possible unobserved values compatible with 289; sum of 28\* and 2\*\* at week t
 
 288: total possible unobserved values compatible with 288; sum of 28\* and 2\*\* at week t
+
+todo: write out equation for doing imputation

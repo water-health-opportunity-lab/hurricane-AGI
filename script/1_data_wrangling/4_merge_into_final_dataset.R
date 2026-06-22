@@ -229,8 +229,7 @@ outcomes_all_disagg <- outcomes_all_disagg %>%
 outcomes_all_reagg <- outcomes_all_disagg %>%
   group_by(zip3_unmasked, date, week_start, encounter_year, weeks_since_anchor, 
            days_since_anchor, mean_flood_value, median_flood_value, max_flood_value, 
-           inundation_exposure, quartile_flood_value, tertile_flood_value,
-           total_population) %>%
+           inundation_exposure, total_population) %>%
   summarise(n_events = sum(n_events_disagg),
             n_foodborne = sum(n_foodborne_disagg)) %>%
   ungroup()
@@ -238,6 +237,11 @@ outcomes_all_reagg <- outcomes_all_disagg %>%
 # joining this way to allow all zip3 by week combinations to be represented
 join_outcomes_all_reagg <- left_join(covariates, outcomes_all_reagg, 
                                      by = c("week_start", "zip3" = "zip3_unmasked"))
+
+outcomes_all_disagg <- outcomes_all_disagg %>% rename(zip_masked = zip3)
+
+join_outcomes_all_disagg <- left_join(covariates, outcomes_all_disagg, 
+                                      by = c("week_start", "zip3" = "zip3_unmasked"))
 
 join_outcomes_all_reagg <- join_outcomes_all_reagg %>%
   group_by(zip3) %>%
@@ -280,8 +284,21 @@ join_outcomes_all_reagg <- join_outcomes_all_reagg %>%
          year = year(date)
   )
 
+join_outcomes_all_disagg <- join_outcomes_all_disagg %>%
+  mutate(encounter_year = as.factor(encounter_year),
+         date = as.Date(join_outcomes_all_disagg$week_start, format = "%Y%m%d"),
+         
+         # note: these month and year indicators are based on the date that the week started
+         month = month(date),
+         year = year(date)
+  )
+
 join_outcomes_all_reagg <- join_outcomes_all_reagg %>%
   filter(year(as.Date(join_outcomes_all_reagg$week_start, format = "%Y%m%d")) != 2016)
+
+
+join_outcomes_all_disagg <- join_outcomes_all_disagg %>%
+  filter(year(as.Date(join_outcomes_all_disagg$week_start, format = "%Y%m%d")) != 2016)
 
 join_outcomes_all_reagg <- join_outcomes_all_reagg %>%
   filter( (date < other_hurricanes$start[other_hurricanes$hurricane == "Florence"]) |
@@ -296,7 +313,31 @@ join_outcomes_all_reagg <- join_outcomes_all_reagg %>%
       (date > other_hurricanes$end[other_hurricanes$hurricane == "Isaias"])
   )
 
+join_outcomes_all_disagg <- join_outcomes_all_disagg %>%
+  filter( (date < other_hurricanes$start[other_hurricanes$hurricane == "Florence"]) |
+            (date > other_hurricanes$end[other_hurricanes$hurricane == "Florence"])
+  ) %>%
+  filter(
+    (date < other_hurricanes$start[other_hurricanes$hurricane == "Dorian"]) |
+      (date > other_hurricanes$end[other_hurricanes$hurricane == "Dorian"])
+  ) %>%
+  filter(
+    (date < other_hurricanes$start[other_hurricanes$hurricane == "Isaias"]) |
+      (date > other_hurricanes$end[other_hurricanes$hurricane == "Isaias"])
+  )
+
 join_outcomes_all_reagg <- join_outcomes_all_reagg %>%
+  # 3-, 5-, and 8-week intervals after hurricane
+  mutate(hurricane_3week = ifelse(date >= as.Date("2024-09-24") & date <= as.Date("2024-09-24") + 21, TRUE, FALSE),
+         hurricane_5week = ifelse(date >= as.Date("2024-09-24") & date <= as.Date("2024-09-24") + 35, TRUE, FALSE),
+         hurricane_8week = ifelse(date >= as.Date("2024-09-24") & date <= as.Date("2024-09-24") + 56, TRUE, FALSE),
+         # based on whether the majority of the month is in that season
+         season = case_when(month %in% c(1, 2, 3) ~ "Winter",
+                            month %in% c(4, 5, 6) ~ "Spring",
+                            month %in% c(7, 8, 9) ~ "Summer",
+                            month %in% c(10, 11, 12) ~ "Fall"))
+
+join_outcomes_all_disagg <- join_outcomes_all_disagg %>%
   # 3-, 5-, and 8-week intervals after hurricane
   mutate(hurricane_3week = ifelse(date >= as.Date("2024-09-24") & date <= as.Date("2024-09-24") + 21, TRUE, FALSE),
          hurricane_5week = ifelse(date >= as.Date("2024-09-24") & date <= as.Date("2024-09-24") + 35, TRUE, FALSE),
@@ -331,6 +372,7 @@ state_by_week <- state_by_week %>%
   dplyr::select(-encounter_year)
 
 if (FALSE) {
+  write_csv(join_outcomes_all_disagg, "data/processed_data/dataset_with_added_masked_units_for_imputation.csv")
   write_csv(join_outcomes_all_reagg, "data/processed_data/dataset_with_added_masked_units.csv")
   write_csv(state_by_week, "data/processed_data/state_by_week_with_added_masked_units.csv")
 }

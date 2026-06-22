@@ -387,6 +387,22 @@ m1c_private_wells <- glm(n_events ~ high_private_wells*hurricane_8week +
                          offset = log(total_population),
                          data = dat, family = "quasipoisson")
 
+main_modela_pw <- glm(n_events ~ inundation_exposure*hurricane_3week*weighted_percent_wells +
+                        inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
+                        log(neighbor_cases_weighted + 1), 
+                      offset = log(total_population),
+                      data = dat, family = "quasipoisson")
+
+main_modelb_pw <- glm(n_events ~ inundation_exposure*hurricane_5week*weighted_percent_wells +
+                        inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
+                        log(neighbor_cases_weighted + 1), 
+                      offset = log(total_population), data = dat, family = "quasipoisson")
+
+main_modelc_pw <- glm(n_events ~ inundation_exposure*hurricane_8week*weighted_percent_wells +
+                        inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
+                        log(neighbor_cases_weighted + 1), 
+                      offset = log(total_population), data = dat, family = "quasipoisson")
+
 ################################################################################
 all_models <- ls()[grepl("^m[[:digit:]]", ls())]
 
@@ -467,7 +483,7 @@ ggplot(all_final_summary %>%
   geom_point(aes(y = model_type, x = estimate), 
              color = "black", size = 4, position = position_dodge(width = 0.6)) +
   geom_text(aes(y = model_type, x = estimate, label = plot_estimate), 
-            color = "black", size = 4, vjust = -1.75) +
+            color = "black", size = 4, vjust = -2.5) +
   # scale_y_continuous(labels = scales::percent_format(scale = 1)) +
   scale_color_manual(values = "darkblue") +
   geom_vline(xintercept = 1, color = "darkgrey", linetype = "dashed") +
@@ -476,14 +492,14 @@ ggplot(all_final_summary %>%
   theme_bw() +
   theme(panel.grid.minor.x = element_blank(), 
         panel.grid.major.x = element_blank(),
-        axis.text.y = element_text(size = 10, color = "black"),
+        axis.text.y = element_text(size = 14, color = "black"),
         axis.text.x = element_text(size = 10, color = "black"),
         axis.title = element_text(size = 12, color = "black", face = "bold"),
         legend.position = "none",
         plot.margin = unit(c(0.1,0.1,0.1,0.1), "cm"))
 
 if (FALSE) {
-  ggsave("figures/main_results.png", dpi = 600, height = 3, width = 5)
+  ggsave("figures/main_results.svg", dpi = 600, height = 4, width = 6)
 }
 
 ggplot(all_final_summary %>% 
@@ -495,7 +511,7 @@ ggplot(all_final_summary %>%
   geom_point(aes(y = model_type, x = estimate), 
              color = "black", size = 4, position = position_dodge(width = 0.6)) +
   geom_text(aes(y = model_type, x = estimate, label = plot_estimate), 
-            color = "black", size = 4, vjust = -1.75) +
+            color = "black", size = 4, vjust = -2.75) +
   # scale_y_continuous(labels = scales::percent_format(scale = 1)) +
   scale_color_manual(values = "darkgreen") +
   geom_vline(xintercept = 1, color = "darkgrey", linetype = "dashed") +
@@ -504,14 +520,14 @@ ggplot(all_final_summary %>%
   theme_bw() +
   theme(panel.grid.minor.x = element_blank(), 
         panel.grid.major.x = element_blank(),
-        axis.text.y = element_text(size = 10, color = "black"),
+        axis.text.y = element_text(size = 14, color = "black"),
         axis.text.x = element_text(size = 10, color = "black"),
         axis.title = element_text(size = 12, color = "black", face = "bold"),
         legend.position = "none",
         plot.margin = unit(c(0.1,0.1,0.1,0.1), "cm"))
 
 if (FALSE) {
-  ggsave("figures/private_well_results.png", dpi = 600, height = 3, width = 5)
+  ggsave("figures/private_well_results.png", dpi = 600, height = 4, width = 6)
 }
 
 ggplot(all_final_summary %>% 
