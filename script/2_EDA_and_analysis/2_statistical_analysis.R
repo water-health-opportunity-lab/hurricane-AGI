@@ -1,8 +1,8 @@
-###############################################################################
-# Primary Authors: Jahred Liddie, Katie O'Brien
+################################################################################
+# Primary authors: Jahred Liddie, Katie O'Brien
 # Purpose: statistical analyses
 # Date created: 3/2/2026
-###############################################################################
+################################################################################
 library(broom)
 library(MASS)
 library(spdep)
@@ -17,7 +17,9 @@ dat_masked$zip3 <- as.character(dat_masked$zip3)
 
 state_by_week <- read_csv("data/processed_data/state_by_week_with_added_masked_units.csv")
 
-###############################################################################
+source("script/2_EDA_and_analysis/analysis_functions.R")
+
+################################################################################
 # getting zcta shapes using tigris package - 2020 is most recent available
 zcta_geometry <- zctas(year = 2020, cb = TRUE)
 
@@ -33,35 +35,6 @@ nc_zip3_geom <- nc_zcta %>%
     geometry = st_union(geometry)
   )
 
-# function to evaluate residual, hurricane week-specific global spatial autocorrelation
-eval_SAC.f <- function(hurricane_week = NULL, model = NULL, model_dataset = NULL) {
-  
-  model_dataset$model_residuals <- model$residuals
-  
-  dat_hurricane <- model_dataset %>%
-    filter(week_start == hurricane_week) %>% 
-    mutate(zip3 = as.character(zip3))
-  
-  dat_hurricane <- left_join(nc_zip3_geom, dat_hurricane, by = "zip3")
-  dat_hurricane <- st_as_sf(dat_hurricane, coords = geometry, crs = st_crs(nc_zip3_geom))
-  
-  nb <- poly2nb(dat_hurricane, queen = TRUE)
-  
-  lw <- nb2listw(nb, zero.policy = TRUE)
-  
-  morans <- moran.mc(dat_hurricane$model_residuals, lw, nsim = 999, zero.policy = TRUE,
-                     alternative="greater")
-  
-  clean_morans <- broom::tidy(morans)
-  
-  clean_morans$model_name <- deparse(substitute(model))
-  
-  clean_morans$week_start <- hurricane_week
-  
-  return(clean_morans)
-  
-}
-
 dat_neighbors <- dat %>%
     group_by(zip3) %>%
     slice(1) %>%
@@ -73,18 +46,6 @@ dat_neighbors <- left_join(nc_zip3_geom, dat_neighbors, by = "zip3")
 dat_neighbors <- st_as_sf(dat_neighbors, coords = geometry, crs = st_crs(nc_zip3_geom))
   
 nb <- poly2nb(dat_neighbors, queen = TRUE)
-
-id_neighbors.f <- function(row_numbers = NULL, zip_dataset = dat_neighbors) {
-    
-  one_row <- zip_dataset[row_numbers,]
-  
-  one_id <- one_row$id
-  
-  one_row$neighbors <- list(nb[[row_numbers]])
-  
-  return(one_row)
-  
-}
 
 dat_neighbors <- map_dfr(1:20, ~id_neighbors.f(row_numbers = .x))
 dat_neighbors <- dat_neighbors %>% 
@@ -100,8 +61,6 @@ dat <- dat %>%
          neighbor_cases_unweighted = sum( dat$n_events[dat$id %in% unlist(neighbors) & dat$week_start == week_start])) %>%
   ungroup()
   
-# TODO: function on temporal autocorrelation in model residuals
-
 ###############################################################################
 three_weeks <- unique(dat$week_start[dat$hurricane_3week])
 five_weeks <- unique(dat$week_start[dat$hurricane_5week])
@@ -245,30 +204,6 @@ m5 <- glm(n_events ~ inundation_exposure*hurricane_3week +
             log(neighbor_cases_weighted + 1),
           offset = log(total_population),
           data = dat_excl5weeks, family = "quasipoisson")
-
-# TODO: if this is included, we need to reprocess data to include quartiles:
-  # # comparing top and bottom quartiles of flooding metric
-  # dat_quartiles <- dat %>%
-  #   filter(quartile_flood_value %in% c(1, 4)) %>%
-  #   mutate(quartile_flood_value = as.factor(quartile_flood_value))
-  # 
-  # m1a_quartiles <- glm(n_events ~ quartile_flood_value*hurricane_3week +
-  #                       quartile_flood_value*as.factor(year) + quartile_flood_value*as.factor(month) +
-  #                       log(neighbor_cases_weighted + 1), 
-  #                     offset = log(total_population),
-  #                     data = dat_quartiles, family = "quasipoisson")
-  # 
-  # m1b_quartiles <- glm(n_events ~ quartile_flood_value*hurricane_5week +
-  #                        quartile_flood_value*as.factor(year) + quartile_flood_value*as.factor(month) +
-  #                        log(neighbor_cases_weighted + 1), 
-  #                      offset = log(total_population),
-  #                      data = dat_quartiles, family = "quasipoisson")
-  # 
-  # m1c_quartiles <- glm(n_events ~ quartile_flood_value*hurricane_8week +
-  #                        quartile_flood_value*as.factor(year) + quartile_flood_value*as.factor(month) +
-  #                        log(neighbor_cases_weighted + 1), 
-  #                      offset = log(total_population),
-  #                      data = dat_quartiles, family = "quasipoisson")
 
 # non-controlled ITS model at the zip3 level:
 m1a_ITS <- glm(n_events ~ hurricane_3week +
