@@ -222,35 +222,23 @@ outcomes_all_disagg <- left_join(outcomes_all_disagg, exposure %>% mutate(year =
 outcomes_all_disagg <- outcomes_all_disagg %>%
   group_by(zip3, date, week_start, encounter_year, 
            weeks_since_anchor, days_since_anchor) %>%
-  mutate(n_events_disagg = round((n_events * total_population) / sum(total_population), 0),
+  mutate(n_events_pop_disagg = round((n_events * total_population) / sum(total_population), 0),
          n_foodborne_disagg = round((n_foodborne * total_population) / sum(total_population), 0)) %>%
-  ungroup()
-
-outcomes_all_reagg <- outcomes_all_disagg %>%
-  group_by(zip3_unmasked, date, week_start, encounter_year, weeks_since_anchor, 
-           days_since_anchor, mean_flood_value, median_flood_value, max_flood_value, 
-           inundation_exposure, total_population) %>%
-  summarise(n_events = sum(n_events_disagg),
-            n_foodborne = sum(n_foodborne_disagg)) %>%
-  ungroup()
+  ungroup() %>%
+  rename(n_events_agg = n_events, zip3_masked = zip3)
 
 # joining this way to allow all zip3 by week combinations to be represented
-join_outcomes_all_reagg <- left_join(covariates, outcomes_all_reagg, 
-                                     by = c("week_start", "zip3" = "zip3_unmasked"))
-
-outcomes_all_disagg <- outcomes_all_disagg %>% rename(zip_masked = zip3)
-
 join_outcomes_all_disagg <- left_join(covariates, outcomes_all_disagg, 
                                       by = c("week_start", "zip3" = "zip3_unmasked"))
 
-join_outcomes_all_reagg <- join_outcomes_all_reagg %>%
+join_outcomes_all_disagg <- join_outcomes_all_disagg %>%
   group_by(zip3) %>%
   mutate(n_weeks = n(),
          dup_week = duplicated(week_start)) %>%
   ungroup()
 
   # check on weeks split across years
-  check_weeks <- join_outcomes_all_reagg %>%
+  check_weeks <- join_outcomes_all_disagg %>%
     filter(n_weeks > 470)
    
   weeks_over_years <- check_weeks %>%
@@ -259,7 +247,7 @@ join_outcomes_all_reagg <- join_outcomes_all_reagg %>%
     unique()
   
   # none needed
-  add_weeks <- join_outcomes_all_reagg %>%
+  add_weeks <- join_outcomes_all_disagg %>%
     filter(week_start %in% weeks_over_years) %>%
     group_by(zip3, week_start) %>%
     mutate(sum_dup = sum(dup_week)) %>%
@@ -275,15 +263,6 @@ join_outcomes_all_reagg <- join_outcomes_all_reagg %>%
 # final preprocessing steps: (1) add substitutions for missing / zero events,
 # (2) drop 2016 data due to unclear backfilling in EHR, and
 # and (3) drop in proximity to other hurricanes
-join_outcomes_all_reagg <- join_outcomes_all_reagg %>%
-  mutate(encounter_year = as.factor(encounter_year),
-         date = as.Date(join_outcomes_all_reagg$week_start, format = "%Y%m%d"),
-
-         # note: these month and year indicators are based on the date that the week started
-         month = month(date),
-         year = year(date)
-  )
-
 join_outcomes_all_disagg <- join_outcomes_all_disagg %>%
   mutate(encounter_year = as.factor(encounter_year),
          date = as.Date(join_outcomes_all_disagg$week_start, format = "%Y%m%d"),
@@ -293,26 +272,9 @@ join_outcomes_all_disagg <- join_outcomes_all_disagg %>%
          year = year(date)
   )
 
-join_outcomes_all_reagg <- join_outcomes_all_reagg %>%
-  filter(year(as.Date(join_outcomes_all_reagg$week_start, format = "%Y%m%d")) != 2016)
-
-
 join_outcomes_all_disagg <- join_outcomes_all_disagg %>%
   filter(year(as.Date(join_outcomes_all_disagg$week_start, format = "%Y%m%d")) != 2016)
 
-join_outcomes_all_reagg <- join_outcomes_all_reagg %>%
-  filter( (date < other_hurricanes$start[other_hurricanes$hurricane == "Florence"]) |
-            (date > other_hurricanes$end[other_hurricanes$hurricane == "Florence"])
-  ) %>%
-  filter(
-    (date < other_hurricanes$start[other_hurricanes$hurricane == "Dorian"]) |
-      (date > other_hurricanes$end[other_hurricanes$hurricane == "Dorian"])
-  ) %>%
-  filter(
-    (date < other_hurricanes$start[other_hurricanes$hurricane == "Isaias"]) |
-      (date > other_hurricanes$end[other_hurricanes$hurricane == "Isaias"])
-  )
-
 join_outcomes_all_disagg <- join_outcomes_all_disagg %>%
   filter( (date < other_hurricanes$start[other_hurricanes$hurricane == "Florence"]) |
             (date > other_hurricanes$end[other_hurricanes$hurricane == "Florence"])
@@ -326,17 +288,6 @@ join_outcomes_all_disagg <- join_outcomes_all_disagg %>%
       (date > other_hurricanes$end[other_hurricanes$hurricane == "Isaias"])
   )
 
-join_outcomes_all_reagg <- join_outcomes_all_reagg %>%
-  # 3-, 5-, and 8-week intervals after hurricane
-  mutate(hurricane_3week = ifelse(date >= as.Date("2024-09-24") & date <= as.Date("2024-09-24") + 21, TRUE, FALSE),
-         hurricane_5week = ifelse(date >= as.Date("2024-09-24") & date <= as.Date("2024-09-24") + 35, TRUE, FALSE),
-         hurricane_8week = ifelse(date >= as.Date("2024-09-24") & date <= as.Date("2024-09-24") + 56, TRUE, FALSE),
-         # based on whether the majority of the month is in that season
-         season = case_when(month %in% c(1, 2, 3) ~ "Winter",
-                            month %in% c(4, 5, 6) ~ "Spring",
-                            month %in% c(7, 8, 9) ~ "Summer",
-                            month %in% c(10, 11, 12) ~ "Fall"))
-
 join_outcomes_all_disagg <- join_outcomes_all_disagg %>%
   # 3-, 5-, and 8-week intervals after hurricane
   mutate(hurricane_3week = ifelse(date >= as.Date("2024-09-24") & date <= as.Date("2024-09-24") + 21, TRUE, FALSE),
@@ -348,9 +299,9 @@ join_outcomes_all_disagg <- join_outcomes_all_disagg %>%
                             month %in% c(7, 8, 9) ~ "Summer",
                             month %in% c(10, 11, 12) ~ "Fall"))
 
-state_by_week <- join_outcomes_all_reagg %>%
+state_by_week <- join_outcomes_all_disagg %>%
   group_by(week_start, date, weeks_since_anchor, days_since_anchor, month, year, season, encounter_year) %>%
-  summarise(n_events = sum(n_events),
+  summarise(n_events = sum(n_events_agg),
             n_foodborne = sum(n_foodborne),
             hurricane_3week = unique(hurricane_3week),
             hurricane_5week = unique(hurricane_5week),
@@ -365,14 +316,29 @@ state_pop <- exposure %>%
 state_by_week <- left_join(state_by_week, state_pop %>% mutate(year = as.character(year)), 
                            by = c("encounter_year" = "year"))
 
-join_outcomes_all_reagg <- join_outcomes_all_reagg %>%
-  dplyr::select(-X, -encounter_year)
+join_outcomes_all_disagg <- join_outcomes_all_disagg %>%
+  dplyr::select(-X.x, -X.y)
 
 state_by_week <- state_by_week %>%
   dplyr::select(-encounter_year)
 
+masked_outcomes_all_disagg <- join_outcomes_all_disagg %>%
+  filter(zip3_masked %in% c("27*", "28*", "2**", "_NA"))
+
+outcomes_all_unmasked <- outcomes_all %>%
+  filter(!zip3 %in% c("27*", "28*", "2**", "_NA")) %>%
+  filter(weeks_since_anchor >= 53)
+
+masked_outcomes_all_disagg <- left_join(masked_outcomes_all_disagg, 
+                                        outcomes_all_unmasked %>% 
+                                          dplyr::select(zip3, weeks_since_anchor, date, obs_events = n_events,
+                                                        encounter_year))
+
+masked_outcomes_all_disagg <- masked_outcomes_all_disagg %>%
+  mutate(obs_events = ifelse(is.na(obs_events), 0, obs_events))
+
 if (FALSE) {
-  write_csv(join_outcomes_all_disagg, "data/processed_data/dataset_with_added_masked_units_for_imputation.csv")
-  write_csv(join_outcomes_all_reagg, "data/processed_data/dataset_with_added_masked_units.csv")
+  write_csv(masked_outcomes_all_disagg, "data/processed_data/dataset_with_added_masked_units_for_imputation.csv")
+  write_csv(join_outcomes_all_disagg, "data/processed_data/full_dataset_with_added_masked_units.csv")
   write_csv(state_by_week, "data/processed_data/state_by_week_with_added_masked_units.csv")
 }
