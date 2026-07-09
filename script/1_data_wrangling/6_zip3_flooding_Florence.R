@@ -156,7 +156,6 @@ if (FALSE) {
   ggsave("figures/florence_inundation_metric_comparison.png", dpi = 600, width = 7, height = 4)
 }
 
-
 # map of mean % area inundated
 ggplot(final_df_fl) +
   geom_sf(aes(fill = mean_flood_value), color="white") +
