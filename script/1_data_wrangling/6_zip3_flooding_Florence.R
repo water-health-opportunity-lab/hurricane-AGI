@@ -21,17 +21,16 @@ library(stringr)
 ################################################################################
 
 
-
 # import flooding data
 
-filepath <- ".../.../.../.../Hu, Cindy - REACH pilot/2-aims/aim3-AGI/2_raw_data/01_exposure_assessment/Hurricane Florence"
+filepath <- ".../.../.../.../.../2-aims/aim3-AGI/2_raw_data/01_exposure_assessment/Hurricane Florence"
 
 files <- list.files(filepath, pattern = "\\.tif$", full.names=TRUE)
 
 raster_stack <- rast(files)
 
 # checking one file to see spatial area of the raster files
-file <- rast(".../.../.../.../Hu, Cindy - REACH pilot/2-aims/aim3-AGI/2_raw_data/01_exposure_assessment/Hurricane Florence/Florence_31N82W-42N74WFlood_byStor_1km_2018091621.tif")
+file <- rast(".../.../.../.../.../2-aims/aim3-AGI/2_raw_data/01_exposure_assessment/Hurricane Florence/Florence_31N82W-42N74WFlood_byStor_1km_2018091621.tif")
 plot(file)
 # file covers mid-atlantic coast
 crs(file)
@@ -44,7 +43,7 @@ crs(nc_final)
 nc_florence_stack <- crop(raster_stack, nc_final, mask = TRUE)
 
 # confirming crop worked
-plot(nc_florence_stack[[1]])
+plot(nc_florence_stack[[24]])
 # adding zip3 outlines
 plot(nc_final$geometry, add = TRUE)
 # shows that the pixels are mainly NAs (NA = -9999)
@@ -117,6 +116,17 @@ final_df_fl <- final_df_fl %>%
 final_df_fl <- final_df_fl %>%
   mutate(inundation_exposure = mean_flood_value > 0.5)
 
+
+if (FALSE) {
+  # shared drive: 
+  write.csv(final_df_fl, ".../.../.../.../.../2-aims/aim3-AGI/3_processed_data/zip3_exposure_dataset.csv")
+  
+}
+
+
+### figures
+
+# histogram of inundation metrics for comparison
 inundation_metrics <- final_df_fl %>%
   dplyr::select(zip3, mean_flood_value, median_flood_value, max_flood_value) %>%
   pivot_longer(cols = mean_flood_value:max_flood_value, 
@@ -125,7 +135,6 @@ inundation_metrics <- final_df_fl %>%
                                  grepl("median", metric) ~ "Median % inundated",
                                  grepl("max", metric) ~ "Max % inundated"))
 
-# histogram of inundation metrics for comparison
 ggplot(inundation_metrics) +
   geom_histogram(aes(x = perc_inundated), bins = 20, color = "black", fill = "blue") +
   scale_x_continuous(labels = scales::percent) +
@@ -141,6 +150,11 @@ ggplot(inundation_metrics) +
         plot.title = element_text(face = "bold", hjust = 0.5),
         axis.text.x = element_text(size = 8),
         plot.subtitle = element_text( hjust = 0.5))
+
+# only rewrite if there are edits:
+if (FALSE) {
+  ggsave("figures/florence_inundation_metric_comparison.png", dpi = 600, width = 7, height = 4)
+}
 
 
 # map of mean % area inundated
@@ -162,3 +176,10 @@ ggplot(final_df_fl) +
         legend.key.width = unit(0.8, 'cm'),
         legend.spacing = unit(1, unit = 'cm')) +
   guides(fill = guide_colourbar(title.position = "top", title.hjust = 0.5))
+
+# only rewrite if there are edits:
+if (FALSE) {
+  ggsave("figures/florence_mean_percent_inundated_map.png", dpi = 600, width = 7, height = 5)
+}
+
+
