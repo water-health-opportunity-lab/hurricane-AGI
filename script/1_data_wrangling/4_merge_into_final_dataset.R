@@ -133,25 +133,37 @@ other_hurricanes <- tibble(
   end = start + 8*7
 )
 
-join_outcomes <- join_outcomes %>%
-  filter( (date < other_hurricanes$start[other_hurricanes$hurricane == "Florence"]) |
-           (date > other_hurricanes$end[other_hurricanes$hurricane == "Florence"])
-        ) %>%
-  filter(
-          (date < other_hurricanes$start[other_hurricanes$hurricane == "Dorian"]) |
-            (date > other_hurricanes$end[other_hurricanes$hurricane == "Dorian"])
-        ) %>%
-  filter(
-    (date < other_hurricanes$start[other_hurricanes$hurricane == "Isaias"]) |
-      (date > other_hurricanes$end[other_hurricanes$hurricane == "Isaias"])
-  )
-
 exposure$zip3 <- as.factor(exposure$zip3)
 
 join_outcomes_exposure <- left_join(join_outcomes, 
                                     exposure %>% 
                                       dplyr::select(zip3:weighted_percent_wells),
                                     by = c("zip3", "year"))
+
+ggplot(join_outcomes_exposure %>% filter(date >= as.Date("2018-08-20") & date <= as.Date("2018-10-20")), 
+       aes(x = week_start, y = n_events/total_population*1e4, group = zip3)) +
+  geom_point() +
+  geom_line()
+
+ggplot(join_outcomes_exposure %>% filter(date >= as.Date("2018-08-20") & date <= as.Date("2018-10-20")), 
+       aes(x = week_start, y = ppt_sum, group = zip3)) +
+  geom_point() +
+  geom_line()
+
+join_outcomes_exposure <- join_outcomes_exposure %>%
+  filter( (date < other_hurricanes$start[other_hurricanes$hurricane == "Florence"]) |
+            (date > other_hurricanes$end[other_hurricanes$hurricane == "Florence"])
+  ) %>%
+  filter(
+    (date < other_hurricanes$start[other_hurricanes$hurricane == "Dorian"]) |
+      (date > other_hurricanes$end[other_hurricanes$hurricane == "Dorian"])
+  ) %>%
+  filter(
+    (date < other_hurricanes$start[other_hurricanes$hurricane == "Isaias"]) |
+      (date > other_hurricanes$end[other_hurricanes$hurricane == "Isaias"])
+  )
+
+# sum to state level and look again?
 
 join_outcomes_exposure <- join_outcomes_exposure %>%
   # 3-, 5-, and 8-week intervals after hurricane
@@ -315,6 +327,12 @@ state_pop <- exposure %>%
 
 state_by_week <- left_join(state_by_week, state_pop %>% mutate(year = as.character(year)), 
                            by = c("encounter_year" = "year"))
+  
+# for visualizing pre/post hurricane trends:
+  # ggplot(state_by_week %>% filter(date >= as.Date("2018-08-01") & date <= as.Date("2018-10-31")), 
+  #        aes(x = week_start, y = n_events/total_population*1e4)) +
+  #   geom_point() +
+  #   geom_line(group = 1)
 
 join_outcomes_all_disagg <- join_outcomes_all_disagg %>%
   dplyr::select(-X.x, -X.y)
