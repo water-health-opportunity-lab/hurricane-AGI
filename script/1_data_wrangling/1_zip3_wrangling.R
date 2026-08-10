@@ -3,7 +3,7 @@
 # purpose: This script imports the zip code data for the U.S., subsets it into 
   # North Carolina, and then aggregates into zip 3 level. 
   # It then imports the flood inundation data and calculates 
-  # the mean value in each zip3 level. 
+  # the mean value in each zip3 level for Hurricane Helene. 
 # date created: 11/14/2025
 ################################################################################
 
@@ -207,7 +207,7 @@ ggplot(inundation_metrics) +
   scale_y_continuous(breaks = scales::breaks_pretty()) +
   geom_vline(xintercept = 0.5, color = "darkgrey", linetype = "dashed") +
   theme_bw() +
-  labs(title = "Mean % zip3 areas with any inundation",
+  labs(title = "Comparison of Inundation Metrics",
        subtitle = "Calculations based on 3-hour increments (9/24/24, 12:00am - 9/28/24, 9:00pm)", x = "% area inundated",
        y = "Count (n = 20)") +
   facet_wrap(~metric_name) +
