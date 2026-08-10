@@ -70,7 +70,7 @@ res(flor_rast_proj)
 # resolution is 788.1645 x 788.1645
 
 # calculating flooded area
-flor_zip3_df_proj$flooded_area <- exact_extract(
+flor_zip3_df_proj$flooded_area_msq <- exact_extract(
   flor_rast_proj, 
   flor_zip3_df_proj, 
   fun = function(values, coverage_fraction){
@@ -80,10 +80,10 @@ flor_zip3_df_proj$flooded_area <- exact_extract(
 )
 
 # plotting as test
-plot(flor_zip3_df_proj["flooded_area"])
+plot(flor_zip3_df_proj["flooded_area_msq"])
 
 # adding new column for flooded area in kilometers
-flor_zip3_df_proj$flooded_area_km <- flor_zip3_df_proj$flooded_area / 1000
+flor_zip3_df_proj$flooded_area_kmsq <- flor_zip3_df_proj$flooded_area_msq / 1000
 
 # side by side comparison of raster on top of zip3 vs calculated flooding
 p1 <- ggplot()+
@@ -93,8 +93,8 @@ p1 <- ggplot()+
   labs(title = "Flooding Raster")+
   theme_void()
 p2 <- ggplot()+
-  geom_sf(data = flor_zip3_df_proj, aes(fill = flooded_area_km))+
-  scale_fill_gradient(low ="#B0E2ff", high = "#36648B", name = "Flooded Area (km)")+
+  geom_sf(data = flor_zip3_df_proj, aes(fill = flooded_area_kmsq))+
+  scale_fill_gradient(low ="#B0E2ff", high = "#36648B", name = "Flooded Area (square km)")+
   guides(fill = guide_colorbar(barwidth=unit(15, "lines")))+
   labs(title = "Calculated Flooding by Zip3")+
   theme_void()+
@@ -104,6 +104,21 @@ par(mfrow = c(1,1))
 
 # naming final dataframe
 flor_final_df <- flor_zip3_df_proj
+
+# adding column for full zrea of the zip3
+flor_final_df <- flor_final_df %>%
+  mutate(total_area_msq = as.numeric(st_area(geometry)))
+
+# adding new column for total area in kilometers
+flor_final_df$total_area_kmsq <- flor_final_df$flooded_area_msq / 1000
+
+# calculating percentage of area flooded
+flor_final_df <- flor_final_df %>%
+  mutate(percent_flooded_msq = (flooded_area_msq / total_area_msq) * 100)
+
+# assigning exposure
+flor_final_df <- flor_final_df %>%
+  mutate(exposure_assignment = ifelse(percent_flooded_msq > 50, "Exposed", "Unexposed"))
 
 # write to csv
 if (FALSE) {
