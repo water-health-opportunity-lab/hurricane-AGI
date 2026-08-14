@@ -180,5 +180,3 @@ ggplot(final_df_fl) +
 if (FALSE) {
   ggsave("figures/florence_mean_percent_inundated_map.png", dpi = 600, width = 7, height = 5)
 }
-
-

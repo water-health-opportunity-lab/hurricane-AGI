@@ -1,8 +1,8 @@
+################################################################################
 # Primary Authors: Katie O'Brien, Jahred Liddie
 # Purpose: This script uses Global Flood Database data to identify exposure to 
 # Hurricane Florence in North Carolina. 
 # Date created: August 3, 2026
-
 ###############################################################################
 
 # set up 
@@ -15,9 +15,11 @@ library(ggspatial)
 
 ###############################################################################
 
+# TODO: determine where this is coming from to read in
+# final_df <- read.csv(zip3_exposure_dataset.csv)
 
-# import data
-flood_dat <- st_read(".../.../.../.../2-aims/aim3-AGI/2_raw_data/01_exposure_assessment/Global Flood Database/Global_Flood_Records.gpkg")
+# import data (replace with file location for raw data)
+flood_dat <- st_read("../../../../../OneDrive-SharedLibraries-TheGeorgeWashingtonUniversity/Hu, Cindy - REACH pilot/2-aims/aim3-AGI/2_raw_data/01_exposure_assessment/Global Flood Database/Global_Flood_Records.gpkg")
 
 # testing import, plotting all events
 plot(flood_dat$geom)
