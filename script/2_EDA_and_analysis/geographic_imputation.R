@@ -18,15 +18,12 @@ dat_masked <- read.csv(
   "data/processed_data/dataset_with_added_masked_units_for_imputation.csv"
 )
 
-dat_masked$zip3 <- as.character(dat_masked$zip3)
-
 dat <- read_csv(
   "data/processed_data/analytic_dataset.csv",
   show_col_types = FALSE
 )
 
 dat$zip3 <- as.character(dat$zip3)
-
 
 ################################################################################
 # ASSUMPTIONS I made - PLEASE CHECK!
@@ -81,8 +78,9 @@ dat$zip3 <- as.character(dat$zip3)
 dat_masked <- dat_masked %>%
   mutate(
     zip3 = as.character(zip3),
-    mask_level = as.character(mask_level),
-    mask_geography = as.character(mask_geography),
+    mask_geography = as.character(zip3_masked),
+    mask_level = case_when(grepl("27/*", zip3_masked) | grepl("28/*", zip3_masked) ~ "zip2",
+                           TRUE ~ as.character("zip1")),
     
     # This identifier should uniquely represent one observed masked total.
     masked_block_id = interaction(
@@ -93,14 +91,12 @@ dat_masked <- dat_masked %>%
     )
   )
 
-
 ################################################################################
 # 2. RESTRICT MODEL FITTING TO THE PRE-HURRICANE PERIOD
 ################################################################################
 
 dat_masked_train <- dat_masked %>%
   filter(week_start < 20240927)
-
 
 ################################################################################
 # 3. FIT A MODEL FOR ZIP3-SPECIFIC EXPECTED INTENSITY
@@ -132,7 +128,6 @@ allocation_model <- glm.nb(
 
 summary(allocation_model)
 
-
 ################################################################################
 # 4. PREDICT EXPECTED ZIP3 INTENSITIES
 ################################################################################
@@ -148,7 +143,6 @@ dat_masked$pred_intensity <- predict(
   newdata = dat_masked,
   type = "response"
 )
-
 
 ################################################################################
 # 5. CHECK THE PREDICTIONS
@@ -194,7 +188,6 @@ dat_masked <- dat_masked %>%
   ) %>%
   ungroup()
 
-
 ################################################################################
 # 7. VERIFY THAT THE ALLOCATED COUNTS PRESERVE THE MASKED TOTALS
 ################################################################################
@@ -231,7 +224,6 @@ allocation_check <- allocation_check %>%
 
 summary(allocation_check$probability_error)
 summary(allocation_check$allocation_error)
-
 
 ################################################################################
 # 8. OPTIONAL: CREATE INTEGER ALLOCATIONS USING A MULTINOMIAL DRAW
