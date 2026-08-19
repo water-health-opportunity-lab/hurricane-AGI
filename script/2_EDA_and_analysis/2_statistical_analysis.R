@@ -55,7 +55,8 @@ dat_neighbors <- dat_neighbors %>%
 dat <- left_join(dat, dat_neighbors)
 
 dat <- dat %>% 
-  group_by(week_start) %>% rowwise() %>%
+  group_by(week_start) %>% 
+  rowwise() %>%
   mutate(neighbor_weight = 1/length(unlist(neighbors))) %>%
   mutate(neighbor_cases_weighted = sum( neighbor_weight * dat$n_events[dat$id %in% unlist(neighbors) &  dat$week_start == week_start]),
          neighbor_cases_unweighted = sum( dat$n_events[dat$id %in% unlist(neighbors) & dat$week_start == week_start])) %>%

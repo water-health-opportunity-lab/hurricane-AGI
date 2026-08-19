@@ -1,17 +1,16 @@
 ################################################################################
-# Purpose:
-#   Allocate geographically masked ZIP2/ZIP1 counts to compatible ZIP3 regions.
-#
-# Main conceptual change from the original code:
-#   The regression predictions are used as RELATIVE ZIP3 INTENSITIES.
-#   They are not treated directly as the number of imputed cases.
-#
-#   Within each masked geographic unit and week, predicted intensities are
+# primary authors: pramita bagchi, jahred liddie
+# purpose: allocate geographically masked ZIP2/ZIP1 counts to compatible 
+#   ZIP3 regions. Within each masked geographic unit and week, 
+#   predicted intensities are
 #   normalized to sum to 1. The observed masked total is then allocated across
 #   the compatible ZIP3 regions.
+# date created: 8/17/26
 ################################################################################
-
-library(MASS)
+library(broom)
+library(spdep)
+library(mitools)
+library(tigris)
 library(tidyverse)
 
 dat_masked <- read.csv(
@@ -26,65 +25,23 @@ dat <- read_csv(
 dat$zip3 <- as.character(dat$zip3)
 
 ################################################################################
-# ASSUMPTIONS I made - PLEASE CHECK!
-################################################################################
-
-# ASSUMPTION 1:
-# obs_events is the observed ZIP3-specific AGI count for each ZIP3-week.
-#
-# This should be the outcome used to estimate the expected relative incidence
-# across ZIP3 regions.
-#
-# If obs_events has a different meaning, replace it with the actual observed
-# ZIP3-specific count variable.
-
-
-# ASSUMPTION 2:
-# n_events_agg is the known masked aggregate count for a ZIP2- or ZIP1-week.
-#
-# For example, suppose ZIP2 = "27" has 15 masked cases during a particular week.
-# The compatible ZIP3 rows may each contain n_events_agg = 15.
-#
-# If n_events_agg is repeated across compatible ZIP3 rows, it should NOT be
-# treated as an independently observed ZIP3-level outcome. It is one fixed total
-# that must be distributed across those ZIP3 regions.
-
-
-# ASSUMPTION 3:
-# The expanded dat_masked dataset contains variables identifying:
-#
-#   mask_level       = "zip2" or "zip1"
-#   mask_geography   = the corresponding ZIP2 or ZIP1 code
-#
-# Replace these names below if the actual variables have different names.
-
-
-# ASSUMPTION 4:
-# Each row represents one candidate ZIP3 for one masked geographic total and
-# week. All rows corresponding to the same masked total have the same:
-#
-#   week_start
-#   mask_level
-#   mask_geography
-#   n_events_agg
-#
-# We create masked_block_id from these variables.
-
-
-################################################################################
 # 1. CREATE AN IDENTIFIER FOR EACH MASKED AGGREGATE TOTAL
 ################################################################################
-
 dat_masked <- dat_masked %>%
+  group_by(zip3, week_start, year) %>%
+  mutate(dup_week = duplicated(zip3_masked)) %>%
+  ungroup %>%
   mutate(
     zip3 = as.character(zip3),
     mask_geography = as.character(zip3_masked),
-    mask_level = case_when(grepl("27/*", zip3_masked) | grepl("28/*", zip3_masked) ~ "zip2",
+    mask_level = case_when(grepl("27/*", zip3_masked) | 
+                             grepl("28/*", zip3_masked) ~ "zip2",
                            TRUE ~ as.character("zip1")),
     
-    # This identifier should uniquely represent one observed masked total.
+    # this uniquely represents one observed, masked total (zip2- or zip1-by-week)
     masked_block_id = interaction(
       week_start,
+      dup_week,
       mask_level,
       mask_geography,
       drop = TRUE
@@ -94,26 +51,18 @@ dat_masked <- dat_masked %>%
 ################################################################################
 # 2. RESTRICT MODEL FITTING TO THE PRE-HURRICANE PERIOD
 ################################################################################
-
 dat_masked_train <- dat_masked %>%
   filter(week_start < 20240927)
 
 ################################################################################
 # 3. FIT A MODEL FOR ZIP3-SPECIFIC EXPECTED INTENSITY
 ################################################################################
+# The model is fitted to the observed ZIP3-specific counts. Population is 
+# included as an offset, so the model is estimating incidence
+# rates while allowing expected counts to scale with population. The ZIP3 
+# term allows baseline AGI rates to differ across ZIP3 regions.
 
-# The model is fitted to the observed ZIP3-specific counts.
-#
-# Population is included as an offset, so the model is estimating incidence
-# rates while allowing expected counts to scale with population.
-#
-# The ZIP3 term allows baseline AGI rates to differ across ZIP3 regions.
-#
-# I would initially avoid the extensive ZIP3-by-year, ZIP3-by-month, and
-# ZIP3-by-weather interactions in m4-m6. Those models may contain many unstable
-# parameters and are not needed for the basic allocation procedure.
-
-allocation_model <- glm.nb(
+allocation_model <- glm(
   obs_events ~
     zip3 +
     tmean +
@@ -121,9 +70,10 @@ allocation_model <- glm.nb(
     humidity +
     as.factor(year) +
     as.factor(month) +
-    weeks_since_anchor +
-    offset(log(total_population)),
-  data = dat_masked_train
+    weeks_since_anchor,
+    offset = log(total_population),
+  data = dat_masked_train,
+  family = "quasipoisson"
 )
 
 summary(allocation_model)
@@ -131,12 +81,10 @@ summary(allocation_model)
 ################################################################################
 # 4. PREDICT EXPECTED ZIP3 INTENSITIES
 ################################################################################
-
-# These are NOT the imputed masked case counts.
-#
-# They represent the expected relative intensity of AGI cases in each candidate
-# ZIP3-week, based on population, baseline ZIP3 differences, weather,
-# seasonality, and the pre-hurricane time trend.
+# These are NOT the imputed masked case counts. They represent the expected 
+# relative intensity of AGI cases in each candidate ZIP3-week, based on 
+# population, baseline ZIP3 differences, weather, seasonality, 
+# and the pre-hurricane time trend.
 
 dat_masked$pred_intensity <- predict(
   allocation_model,
@@ -147,7 +95,6 @@ dat_masked$pred_intensity <- predict(
 ################################################################################
 # 5. CHECK THE PREDICTIONS
 ################################################################################
-
 if (any(is.na(dat_masked$pred_intensity))) {
   stop(
     "Some predicted intensities are missing. Check missing covariates, ",
@@ -160,19 +107,14 @@ if (any(dat_masked$pred_intensity < 0)) {
   stop("Predicted intensities should not be negative.")
 }
 
-
 ################################################################################
 # 6. NORMALIZE THE INTENSITIES WITHIN EACH MASKED UNIT
 ################################################################################
-
 # For masked block g in week t:
-#
 #     p_zt = mu_hat_zt / sum(mu_hat_kt)
-#
 # where the denominator is summed over all ZIP3 regions compatible with the
-# same ZIP2- or ZIP1-level masked total.
-#
-# The allocation probabilities therefore sum to 1 within each masked block.
+# same ZIP2- or ZIP1-level masked total. The allocation probabilities 
+# therefore sum to 1 within each masked block.
 
 dat_masked <- dat_masked %>%
   group_by(masked_block_id) %>%
@@ -182,7 +124,7 @@ dat_masked <- dat_masked %>%
     allocation_probability =
       pred_intensity / sum_pred_intensity,
     
-    # Deterministic expected allocation:
+    # deterministic expected allocation:
     expected_allocated_events =
       n_events_agg * allocation_probability
   ) %>%
@@ -191,7 +133,6 @@ dat_masked <- dat_masked %>%
 ################################################################################
 # 7. VERIFY THAT THE ALLOCATED COUNTS PRESERVE THE MASKED TOTALS
 ################################################################################
-
 allocation_check <- dat_masked %>%
   group_by(masked_block_id) %>%
   summarise(
@@ -212,7 +153,7 @@ allocation_check <- dat_masked %>%
 
 print(allocation_check)
 
-# These differences should be zero apart from numerical precision.
+# these differences should be zero apart from numerical precision
 allocation_check <- allocation_check %>%
   mutate(
     probability_error =
@@ -223,20 +164,18 @@ allocation_check <- allocation_check %>%
   )
 
 summary(allocation_check$probability_error)
-summary(allocation_check$allocation_error)
+summary(allocation_check$allocation_error) 
 
 ################################################################################
-# 8. OPTIONAL: CREATE INTEGER ALLOCATIONS USING A MULTINOMIAL DRAW
+# 8. CREATE INTEGER ALLOCATIONS USING A MULTINOMIAL DRAW
 ################################################################################
-
-# The expected allocations above may be fractional.
-#
-# For multiple imputation, draw integer allocations from a multinomial
-# distribution. Each draw preserves the observed masked total exactly.
+# The expected allocations above may be fractional. For multiple imputation, 
+# draw integer allocations from a multinomial distribution. 
+# Each draw preserves the observed masked total exactly.
 
 allocate_one_masked_block <- function(block_data) {
   
-  # All rows in this block should correspond to the same aggregate total.
+  # all rows in this block should correspond to the same aggregate total
   masked_total <- unique(block_data$n_events_agg)
   
   if (length(masked_total) != 1) {
@@ -252,7 +191,7 @@ allocate_one_masked_block <- function(block_data) {
   
   probabilities <- block_data$allocation_probability
   
-  # Normalize again to protect against small floating-point discrepancies.
+  # normalize again to protect against small floating-point discrepancies
   probabilities <- probabilities / sum(probabilities)
   
   allocated_counts <- as.vector(
@@ -268,11 +207,9 @@ allocate_one_masked_block <- function(block_data) {
   return(block_data)
 }
 
-
 ################################################################################
 # 9. GENERATE ONE IMPUTED DATASET
 ################################################################################
-
 set.seed(1001)
 
 imputed_allocation_1 <- dat_masked %>%
@@ -282,11 +219,9 @@ imputed_allocation_1 <- dat_masked %>%
   ) %>%
   ungroup()
 
-
 ################################################################################
 # 10. VERIFY THE INTEGER ALLOCATIONS
 ################################################################################
-
 integer_allocation_check <- imputed_allocation_1 %>%
   group_by(masked_block_id) %>%
   summarise(
@@ -302,34 +237,25 @@ if (any(
   stop("At least one imputed allocation does not preserve the masked total.")
 }
 
-
 ################################################################################
 # 11. SUM ALLOCATED MASKED CASES BY ZIP3 AND WEEK
 ################################################################################
-
 # A ZIP3-week could potentially receive cases from more than one masked block,
 # particularly if both ZIP1- and ZIP2-level masked records exist.
-
 allocated_by_zip3_week <- imputed_allocation_1 %>%
-  group_by(zip3, week_start) %>%
+  group_by(zip3, week_start, dup_week) %>%
   summarise(
     imputed_masked_events = sum(allocated_events),
     .groups = "drop"
   )
 
-
 ################################################################################
 # 12. ADD THE IMPUTED MASKED COUNTS TO THE OBSERVED ZIP3 COUNTS
 ################################################################################
-
-# ASSUMPTION 5:
-# In the analytic dataset, n_events is the directly observed ZIP3-specific
-# event count to which the imputed masked cases should be added.
-
 dat_completed <- dat %>%
   left_join(
     allocated_by_zip3_week,
-    by = c("zip3", "week_start")
+    by = c("zip3", "week_start", "dup_week")
   ) %>%
   mutate(
     imputed_masked_events =
@@ -339,11 +265,9 @@ dat_completed <- dat %>%
       n_events + imputed_masked_events
   )
 
-
 ################################################################################
-# 13. OPTIONAL: GENERATE MULTIPLE IMPUTED DATASETS
+# 13. GENERATE MULTIPLE IMPUTED DATASETS
 ################################################################################
-
 n_imputations <- 20
 
 all_imputed_allocations <- map_dfr(
@@ -364,23 +288,146 @@ all_imputed_allocations <- map_dfr(
   }
 )
 
-# The interrupted time-series analysis should then be fitted separately in
-# each completed dataset, and the estimates should be combined across
-# imputations.
+sum_imputed_allocations <- all_imputed_allocations %>%
+  group_by(zip3, week_start, dup_week, imputation) %>%
+  summarise(
+    imputed_masked_events = sum(allocated_events),
+    .groups = "drop"
+  )
 
+dat_all_imputed <- expand_grid(dat, imputation = 1:20)
+
+dat_all_imputed <- dat_all_imputed %>%
+  left_join(
+    sum_imputed_allocations,
+    by = c("zip3", "week_start", "dup_week", "imputation")
+  ) %>%
+  mutate(
+    imputed_masked_events =
+      replace_na(imputed_masked_events, 0),
+    
+    completed_events =
+      n_events + imputed_masked_events
+  )
 
 ################################################################################
-# IMPORTANT INTERPRETIVE NOTE
+# 14. RECALCULATE SPATIAL LAGS 
 ################################################################################
+source("script/2_EDA_and_analysis/analysis_functions.R")
 
-# This procedure assumes that the fitted pre-hurricane model provides useful
-# estimates of the relative distribution of AGI cases across compatible ZIP3s.
-#
-# It does not establish that the geographic masking process is random.
-# If small counts are more likely to be masked, the observed ZIP3 counts may
-# not be fully representative of the masked cases.
-#
-# A useful validation analysis would artificially aggregate known
-# pre-hurricane ZIP3 counts to ZIP2, apply this method, and compare the
-# reconstructed ZIP3 counts with the actual counts.
+# getting zcta shapes using tigris package - 2020 is most recent available
+zcta_geometry <- tigris::zctas(year = 2020, cb = TRUE)
+
+# filter for NC
+nc_zcta <- zcta_geometry %>%
+  filter(str_starts(GEOID20, "27") | str_starts(GEOID20, "28"))
+
+# aggregate into zip3 
+nc_zip3_geom <- nc_zcta %>%
+  mutate(zip3 = substr(GEOID20, 1, 3)) %>%
+  group_by(zip3) %>%
+  summarise(
+    geometry = st_union(geometry)
+  )
+
+dat_neighbors <- dat_all_imputed %>%
+  group_by(zip3) %>%
+  slice(1) %>%
+  mutate(zip3 = as.character(zip3)) %>%
+  ungroup() %>%
+  mutate(id = as.factor(row_number()))
+
+dat_neighbors <- left_join(nc_zip3_geom, dat_neighbors, by = "zip3")
+dat_neighbors <- st_as_sf(dat_neighbors, coords = geometry, crs = st_crs(nc_zip3_geom))
+
+nb <- poly2nb(dat_neighbors, queen = TRUE)
+
+dat_neighbors <- map_dfr(1:20, ~id_neighbors.f(row_numbers = .x))
+dat_neighbors <- dat_neighbors %>% 
+  dplyr::select(zip3, id, neighbors) %>%
+  st_drop_geometry()
+
+dat_all_imputed <- left_join(dat_all_imputed, dat_neighbors)
+
+dat_all_imputed <- dat_all_imputed %>% 
+  group_by(week_start, imputation) %>% 
+  rowwise() %>%
+  mutate(neighbor_weight = 1/length(unlist(neighbors))) %>%
+  mutate(neighbor_cases_weighted = sum( neighbor_weight * dat_all_imputed$completed_events[dat_all_imputed$id %in% unlist(neighbors) &
+                                                                                             dat_all_imputed$week_start == week_start &
+                                                                                             dat_all_imputed$imputation == imputation] ),
+         neighbor_cases_unweighted = sum( dat_all_imputed$completed_events[dat_all_imputed$id %in% unlist(neighbors) & 
+                                                                             dat_all_imputed$week_start == week_start &
+                                                                             dat_all_imputed$imputation == imputation])) %>%
+  ungroup()
+
 ################################################################################
+# 15. RERUN MAIN REGRESSION MODELS
+################################################################################
+nested_data <- dat_all_imputed %>%
+  group_by(imputation) %>%
+  nest()
+
+fit_model <- function(df, formula) {
+  
+  reg_formula <- as.formula(formula)
+  
+  m_initial <- glm(reg_formula,
+                   offset = log(total_population),
+                   data = df, 
+                   family = "quasipoisson")
+}
+
+nested_data_m1 <- nested_data %>%
+  mutate(model = map(data, 
+                     ~fit_model(df = .x, 
+                     formula = "completed_events ~ inundation_exposure*hurricane_3week +
+                     inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
+                     log(neighbor_cases_weighted + 1)")),
+         output = map(model, broom::tidy))
+
+res1 <- nested_data_m1 %>% 
+  unnest(output) %>%
+  ungroup()
+
+nested_data_m2 <- nested_data %>%
+  mutate(model = map(data, 
+                     ~fit_model(df = .x, 
+                     formula = "completed_events ~ inundation_exposure*hurricane_5week +
+                     inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
+                     log(neighbor_cases_weighted + 1)")),
+         output = map(model, broom::tidy))
+
+res2 <- nested_data_m2 %>% 
+  unnest(output) %>%
+  ungroup()
+
+nested_data_m3 <- nested_data %>%
+  mutate(model = map(data, 
+                     ~fit_model(df = .x, 
+                                formula = "completed_events ~ inundation_exposure*hurricane_8week +
+                     inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
+                     log(neighbor_cases_weighted + 1)")),
+         output = map(model, broom::tidy))
+
+res3 <- nested_data_m3 %>% 
+  unnest(output) %>%
+  ungroup()
+
+################################################################################
+# 16. POOL RESULTS FROM MULTIPLY IMPUTED DATASETS
+################################################################################
+betas_m1 <- MIextract(res1$model, fun = coef) 
+var_m1 <- MIextract(res1$model, fun = vcov)
+
+m1_pooled_results <- summary(MIcombine(betas_m1, var_m1))
+
+betas_m2 <- MIextract(res2$model, fun = coef) 
+var_m2 <- MIextract(res2$model, fun = vcov)
+
+m2_pooled_results <- summary(MIcombine(betas_m2, var_m2))
+
+betas_m3 <- MIextract(res3$model, fun = coef) 
+var_m3 <- MIextract(res3$model, fun = vcov)
+
+m3_pooled_results <- summary(MIcombine(betas_m3, var_m3))
