@@ -12,6 +12,8 @@ dat_masked <- read.csv("data/processed_data/dataset_with_added_masked_units.csv"
 
 state_by_week <- read_csv("data/processed_data/state_by_week_with_added_masked_units.csv")
 
+dat_all_imputed <- read_csv("data/processed_data/analytic_imputed_datasets.csv")
+
 ###############################################################################
 # 1) exploratory plots:
 # a few different versions of aggregated data:
@@ -374,7 +376,7 @@ if (FALSE) {
   ggsave("figures/masked_zip3_level_rate_trend.png", dpi = 600, height = 7, width = 9)
 }
 
-###############################################################################
+################################################################################
 
 short_dat <- dat %>%
       filter(date >= as.Date("2024-09-27") - 21 & date < as.Date("2024-09-27") + 21)
@@ -407,3 +409,6 @@ summary(
   lm(case_rate_per10k ~ hurricane_8week, data = short_dat)
 )
   
+###############################################################################
+# This section adds an additional layer using the multiply imputed datasets
+  # generated in script #3 in this folder.

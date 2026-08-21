@@ -12,9 +12,6 @@ library(tidyverse)
 dat <- read_csv("data/processed_data/analytic_dataset.csv")
 dat$zip3 <- as.character(dat$zip3)
 
-dat_masked <- read.csv("data/processed_data/dataset_with_added_masked_units.csv")
-dat_masked$zip3 <- as.character(dat_masked$zip3)
-
 state_by_week <- read_csv("data/processed_data/state_by_week_with_added_masked_units.csv")
 
 source("script/2_EDA_and_analysis/analysis_functions.R")
@@ -245,35 +242,8 @@ m1a_exclfoodborne <- glm(n_nonfoodborne ~ inundation_exposure*hurricane_3week +
   #                          data = dat, family = "quasipoisson")
 
 ################################################################################
-# sensitivity analyses below are based on the following: 
-  # 1) a dataset in which events that occurred in masked geographic units 
-    # were split (according to total population) into zip3 units
-  # 2) a dataset at the state-by-week level that includes events that occurred in
-    # masked geographic units
-
-m1a_masked <- glm(n_events ~ inundation_exposure*hurricane_3week +
-                    inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month), 
-                  offset = log(total_population),
-                  data = dat_masked, family = "quasipoisson")
-
-three_week_SAC_masked <- map_dfr(three_weeks, 
-                                 ~eval_SAC.f(hurricane_week = .x, model_dataset = dat_masked, model = m1a_masked))
-
-m1b_masked <- glm(n_events ~ inundation_exposure*hurricane_5week +
-                   inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month), 
-                  offset = log(total_population),
-                  data = dat_masked, family = "quasipoisson")
-
-five_week_SAC_masked <- map_dfr(five_weeks, 
-                                 ~eval_SAC.f(hurricane_week = .x, model_dataset = dat_masked, model = m1b_masked))
-
-m1c_masked <- glm(n_events ~ inundation_exposure*hurricane_8week +
-                   inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month), 
-                  offset = log(total_population),
-                  data = dat_masked, family = "quasipoisson")
-
-eight_week_SAC_masked <- map_dfr(eight_weeks, 
-                                 ~eval_SAC.f(hurricane_week = .x, model_dataset = dat_masked, model = m1c_masked))
+# sensitivity analyses below use a dataset at the state-by-week level 
+# that includes events that occurred in masked geographic units
 
 # non-controlled ITS model at the state level:
 m1a_ITS_state <- glm(n_events ~ hurricane_3week +
@@ -354,33 +324,25 @@ all_final_coefs <- all_final_coefs %>%
                                 model_id == 2 ~ "CITS: excl. foodborne illness (3-week)",
                                 model_id == 3 ~ "Non-controlled ITS (3-week)",
                                 model_id == 4 ~ "Non-controlled ITS: state-level (3-week)",
-                                model_id == 5 ~ "CITS: incl. masked units (3-week)",
-                                model_id == 6 ~ "CITS: private well groups (3-week)",
-                                # model_id == 7 ~ "CITS: top and bottom flooding quartiles (3-week)",
-                                model_id == 7 ~ "CITS: main model (5-week)",
-                                model_id == 8 ~ "Non-controlled ITS (5-week)",
-                                model_id == 9 ~ "Non-controlled ITS: state-level (5-week)",
-                                model_id == 10 ~ "CITS: incl. masked units (5-week)",
-                                # model_id == 11 ~ "CITS: top and bottom flooding quartiles (5-week)",
-                                model_id == 11 ~ "CITS: private well groups (5-week)",
-                                model_id == 12 ~ "CITS: main model (8-week)",
-                                model_id == 13 ~ "Non-controlled ITS (8-week)",
-                                model_id == 14 ~ "Non-controlled ITS: state-level (8-week)",
-                                model_id == 15 ~ "CITS: incl. masked units (8-week)",
-                                # model_id == 16 ~ "CITS: top and bottom flooding quartiles (8-week)",
-                                model_id == 16 ~ "CITS: private well groups (8-week)",
-                                model_id == 17 ~ "CITS: season FEs",
-                                model_id == 18 ~ "CITS: negative binomial (3-week)",
-                                model_id == 19 ~ "CITS: negative binomial (5-week)",
-                                model_id == 20 ~ "CITS: negative binomial (8-week)",
-                                model_id == 21 ~ "CITS: mean daily temp + humidity",
-                                model_id == 22 ~ "CITS: max daily temp + humidity",
-                                model_id == 23 ~ "CITS: min daily temp + humidity",
-                                model_id == 24 ~ "CITS: excl. 5-week period"),
+                                model_id == 5 ~ "CITS: private well groups (3-week)",
+                                model_id == 6 ~ "CITS: main model (5-week)",
+                                model_id == 7 ~ "Non-controlled ITS (5-week)",
+                                model_id == 8 ~ "Non-controlled ITS: state-level (5-week)",
+                                model_id == 9 ~ "CITS: private well groups (5-week)",
+                                model_id == 10 ~ "CITS: main model (8-week)",
+                                model_id == 11 ~ "Non-controlled ITS (8-week)",
+                                model_id == 12 ~ "Non-controlled ITS: state-level (8-week)",
+                                model_id == 13 ~ "CITS: private well groups (8-week)",
+                                model_id == 14 ~ "CITS: season FEs",
+                                model_id == 15 ~ "CITS: negative binomial (3-week)",
+                                model_id == 16 ~ "CITS: negative binomial (5-week)",
+                                model_id == 17 ~ "CITS: negative binomial (8-week)",
+                                model_id == 18 ~ "CITS: mean daily temp + humidity",
+                                model_id == 19 ~ "CITS: max daily temp + humidity",
+                                model_id == 20 ~ "CITS: min daily temp + humidity",
+                                model_id == 21 ~ "CITS: excl. 5-week period"),
          model_group = case_when(grepl("CITS: main model", model_type) ~ "CITS: main model",
                                  grepl("CITS: private well", model_type) ~ "CITS: private wells",
-                                 grepl("CITS: incl. masked units", model_type) ~ "CITS: incl. masked events",
-                                 grepl("CITS: top and bottom quartiles", model_type) ~ "CITS: top and bottom quartiles",
                                  grepl("Non-controlled ITS", model_type) ~ "ITS",
                                  TRUE ~ "Sensitivity analyses")
   )
@@ -392,11 +354,11 @@ all_final_fit_nb <- map_dfr(all_models[grepl("^m3", all_models)], ~glance(eval(a
                             .id = "model_id")
 
 all_final_fit_nb <- all_final_fit_nb %>%
-  mutate(model_id = 18:20,
+  mutate(model_id = 15:17,
          logLik = as.numeric(logLik))
          
 all_final_fit <- all_final_fit %>%
-  mutate(model_id = ifelse(as.numeric(model_id) >= 18, as.character(as.numeric(model_id) + 3), as.character(model_id)))
+  mutate(model_id = ifelse(as.numeric(model_id) >= 15, as.character(as.numeric(model_id) + 3), as.character(model_id)))
 
 all_final_fit <- rbind(all_final_fit, all_final_fit_nb)
 
@@ -409,6 +371,29 @@ all_final_summary <- all_final_summary %>%
                                " [", format(round(conf.low, 2), nsmall = 2), 
                                ", ", format(round(conf.high, 2), nsmall = 2), "]", sep = "")
          )
+
+if (FALSE) {
+  write.csv(all_final_summary %>% 
+              dplyr::filter(grepl("inundation_exposureTRUE:hurricane", term) &
+                            model_group == "CITS: main model"),
+            "tables/main_model_results.csv")
+  
+  write.csv(all_final_summary %>% 
+              dplyr::filter(grepl("hurricane", term) &
+                              model_group == "ITS"),
+            "tables/non-controlled_ITS_model_results.csv")
+  
+  write.csv(all_final_summary %>% 
+              dplyr::filter(grepl("inundation_exposureTRUE:hurricane", term) &
+                              model_group == "Sensitivity analyses"),
+            "tables/sensitivity_model_results.csv")
+  
+  write.csv(all_final_summary %>% 
+              dplyr::filter(grepl("high_private_wellsTRUE:hurricane", term) &
+                              model_group == "Sensitivity analyses"),
+            "tables/PW_group_model_results.csv")
+  
+}
 
 ggplot(all_final_summary %>% 
          filter(model_group == "CITS: main model" &
@@ -494,34 +479,6 @@ if (FALSE) {
 }
 
 ggplot(all_final_summary %>% 
-         filter(model_group == "CITS: incl. masked events" &
-                grepl("inundation_exposureTRUE:hurricane", term))) +
-  geom_errorbar(aes(y = model_type, x = estimate,
-                    xmin = conf.low, xmax = conf.high, color = model_group),
-                width = 0.5, size = 2, position = position_dodge(width = 0.6)) +
-  geom_point(aes(y = model_type, x = estimate), 
-             color = "black", size = 4, position = position_dodge(width = 0.6)) +
-  geom_text(aes(y = model_type, x = estimate, label = plot_estimate), 
-            color = "black", size = 4, vjust = -2.5) +
-  # scale_y_continuous(labels = scales::percent_format(scale = 1)) +
-  scale_color_manual(values = MetBrewer::met.brewer(name = "Egypt")) +
-  geom_vline(xintercept = 1, color = "darkgrey", linetype = "dashed") +
-  xlim(0.25, 2) +
-  labs(x = "Incidence rate ratio", y = "") +
-  theme_bw() +
-  theme(panel.grid.minor.x = element_blank(), 
-        panel.grid.major.x = element_blank(),
-        axis.text.y = element_text(size = 10, color = "black"),
-        axis.text.x = element_text(size = 10, color = "black"),
-        axis.title = element_text(size = 12, color = "black", face = "bold"),
-        legend.position = "none",
-        plot.margin = unit(c(0.1,0.1,0.1,0.1), "cm"))
-
-if (FALSE) {
-  ggsave("figures/CITS_results_with_masked_units.png", dpi = 600, height = 4, width = 6)
-}
-
-ggplot(all_final_summary %>% 
          filter(model_group == "Sensitivity analyses" &
                   grepl("inundation_exposureTRUE:hurricane", term))) +
   geom_errorbar(aes(x = model_type, y = estimate,
@@ -549,3 +506,60 @@ ggplot(all_final_summary %>%
 if (FALSE) {
   ggsave("figures/sensitivity_results.png", dpi = 600, height = 4, width = 6)
 }
+
+#### DEPRECATED W/ NEW MASKED ANALYSIS
+
+# dat_masked2 <- read.csv("data/processed_data/dataset_with_added_masked_units.csv")
+# dat_masked$zip3 <- as.character(dat_masked$zip3)
+# 
+# m1a_masked <- glm(n_events ~ inundation_exposure*hurricane_3week +
+#                     inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month), 
+#                   offset = log(total_population),
+#                   data = dat_masked, family = "quasipoisson")
+# 
+# three_week_SAC_masked <- map_dfr(three_weeks, 
+#                                  ~eval_SAC.f(hurricane_week = .x, model_dataset = dat_masked, model = m1a_masked))
+# 
+# m1b_masked <- glm(n_events ~ inundation_exposure*hurricane_5week +
+#                     inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month), 
+#                   offset = log(total_population),
+#                   data = dat_masked, family = "quasipoisson")
+# 
+# five_week_SAC_masked <- map_dfr(five_weeks, 
+#                                 ~eval_SAC.f(hurricane_week = .x, model_dataset = dat_masked, model = m1b_masked))
+# 
+# m1c_masked <- glm(n_events ~ inundation_exposure*hurricane_8week +
+#                     inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month), 
+#                   offset = log(total_population),
+#                   data = dat_masked, family = "quasipoisson")
+# 
+# eight_week_SAC_masked <- map_dfr(eight_weeks, 
+#                                  ~eval_SAC.f(hurricane_week = .x, model_dataset = dat_masked, model = m1c_masked))
+# 
+# ggplot(all_final_summary %>% 
+#          filter(model_group == "CITS: incl. masked events" &
+#                   grepl("inundation_exposureTRUE:hurricane", term))) +
+#   geom_errorbar(aes(y = model_type, x = estimate,
+#                     xmin = conf.low, xmax = conf.high, color = model_group),
+#                 width = 0.5, size = 2, position = position_dodge(width = 0.6)) +
+#   geom_point(aes(y = model_type, x = estimate), 
+#              color = "black", size = 4, position = position_dodge(width = 0.6)) +
+#   geom_text(aes(y = model_type, x = estimate, label = plot_estimate), 
+#             color = "black", size = 4, vjust = -2.5) +
+#   # scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+#   scale_color_manual(values = MetBrewer::met.brewer(name = "Egypt")) +
+#   geom_vline(xintercept = 1, color = "darkgrey", linetype = "dashed") +
+#   xlim(0.25, 2) +
+#   labs(x = "Incidence rate ratio", y = "") +
+#   theme_bw() +
+#   theme(panel.grid.minor.x = element_blank(), 
+#         panel.grid.major.x = element_blank(),
+#         axis.text.y = element_text(size = 10, color = "black"),
+#         axis.text.x = element_text(size = 10, color = "black"),
+#         axis.title = element_text(size = 12, color = "black", face = "bold"),
+#         legend.position = "none",
+#         plot.margin = unit(c(0.1,0.1,0.1,0.1), "cm"))
+# 
+# if (FALSE) {
+#   ggsave("figures/CITS_results_with_masked_units.png", dpi = 600, height = 4, width = 6)
+# }

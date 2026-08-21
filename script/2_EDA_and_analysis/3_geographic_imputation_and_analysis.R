@@ -208,7 +208,7 @@ allocate_one_masked_block <- function(block_data) {
 }
 
 ################################################################################
-# 9. GENERATE ONE IMPUTED DATASET
+# 9. GENERATE ONE IMPUTED DATASET (as a test, 1/4)
 ################################################################################
 set.seed(1001)
 
@@ -220,7 +220,7 @@ imputed_allocation_1 <- dat_masked %>%
   ungroup()
 
 ################################################################################
-# 10. VERIFY THE INTEGER ALLOCATIONS
+# 10. VERIFY THE INTEGER ALLOCATIONS (as a test, 2/4)
 ################################################################################
 integer_allocation_check <- imputed_allocation_1 %>%
   group_by(masked_block_id) %>%
@@ -238,7 +238,7 @@ if (any(
 }
 
 ################################################################################
-# 11. SUM ALLOCATED MASKED CASES BY ZIP3 AND WEEK
+# 11. SUM ALLOCATED MASKED CASES BY ZIP3 AND WEEK (as a test, 3/4)
 ################################################################################
 # A ZIP3-week could potentially receive cases from more than one masked block,
 # particularly if both ZIP1- and ZIP2-level masked records exist.
@@ -250,7 +250,7 @@ allocated_by_zip3_week <- imputed_allocation_1 %>%
   )
 
 ################################################################################
-# 12. ADD THE IMPUTED MASKED COUNTS TO THE OBSERVED ZIP3 COUNTS
+# 12. ADD THE IMPUTED MASKED COUNTS TO THE OBSERVED ZIP3 COUNTS (as a test, 4/4)
 ################################################################################
 dat_completed <- dat %>%
   left_join(
@@ -361,6 +361,11 @@ dat_all_imputed <- dat_all_imputed %>%
                                                                              dat_all_imputed$imputation == imputation])) %>%
   ungroup()
 
+if (FALSE) {
+  write.csv(dat_all_imputed %>% dplyr::select(-neighbors), # drop list-col
+            "data/processed_data/analytic_imputed_datasets.csv")
+}
+
 ################################################################################
 # 15. RERUN MAIN REGRESSION MODELS
 ################################################################################
@@ -372,10 +377,8 @@ fit_model <- function(df, formula) {
   
   reg_formula <- as.formula(formula)
   
-  m_initial <- glm(reg_formula,
-                   offset = log(total_population),
-                   data = df, 
-                   family = "quasipoisson")
+  one_model <- glm(reg_formula, offset = log(total_population), 
+                   data = df, family = "quasipoisson")
 }
 
 nested_data_m1 <- nested_data %>%
@@ -414,20 +417,90 @@ res3 <- nested_data_m3 %>%
   unnest(output) %>%
   ungroup()
 
+# currently excl. PW results:
+# nested_data_m1_pw <- nested_data %>%
+#   mutate(model = map(data, 
+#                      ~fit_model(df = .x, 
+#                                 formula = "completed_events ~ inundation_exposure*hurricane_3week*weighted_percent_wells +
+#                         inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
+#                         log(neighbor_cases_weighted + 1)")),
+#          output = map(model, broom::tidy))
+# 
+# res1_pw <- nested_data_m1_pw %>% 
+#   unnest(output) %>%
+#   ungroup()
+
 ################################################################################
 # 16. POOL RESULTS FROM MULTIPLY IMPUTED DATASETS
 ################################################################################
-betas_m1 <- MIextract(res1$model, fun = coef) 
-var_m1 <- MIextract(res1$model, fun = vcov)
+betas_m1 <- MIextract(nested_data_m1$model, fun = coef)
+var_m1 <- MIextract(nested_data_m1$model, fun = vcov)
 
 m1_pooled_results <- summary(MIcombine(betas_m1, var_m1))
 
-betas_m2 <- MIextract(res2$model, fun = coef) 
-var_m2 <- MIextract(res2$model, fun = vcov)
+betas_m2 <- MIextract(nested_data_m2$model, fun = coef)
+var_m2 <- MIextract(nested_data_m2$model, fun = vcov)
 
 m2_pooled_results <- summary(MIcombine(betas_m2, var_m2))
 
-betas_m3 <- MIextract(res3$model, fun = coef) 
-var_m3 <- MIextract(res3$model, fun = vcov)
+betas_m3 <- MIextract(nested_data_m3$model, fun = coef)
+var_m3 <- MIextract(nested_data_m3$model, fun = vcov)
 
 m3_pooled_results <- summary(MIcombine(betas_m3, var_m3))
+
+# currently excluding PW models:
+# betas_m1_pw <- MIextract(nested_data_m1_pw$model, fun = coef)
+# var_m1_pw <- MIextract(nested_data_m1_pw$model, fun = vcov)
+# 
+# m1_pw_pooled_results <- summary(MIcombine(betas_m1_pw, var_m1_pw))
+
+################################################################################
+# 17. TABULATE/VISUALIZE RESULTS
+################################################################################
+all_final_coefs <- rbind(m1_pooled_results %>% mutate(model_type = "CITS: w/ pooled imputation (3-week)"), 
+                         m2_pooled_results %>% mutate(model_type = "CITS: w/ pooled imputation (5-week)"), 
+                         m3_pooled_results %>% mutate(model_type = "CITS: w/ pooled imputation (8-week)"))
+
+all_final_coefs <- all_final_coefs %>%
+  mutate(term = rownames(all_final_coefs),
+         estimate = exp(results),
+         conf.low = exp(`(lower`),
+         conf.high = exp(`upper)`),
+         plot_estimate = paste(format(round(exp(results), 2), nsmall = 2),
+                               " [", format(round(exp(`(lower`), 2), nsmall = 2),
+                               ", ", format(round(exp(`upper)`), 2), nsmall = 2), "]", sep = ""),
+         model_group = "CITS: w/ pooled imputation"
+         )
+
+if (FALSE) {
+  write.csv(all_final_coefs %>% dplyr::filter(grepl("inundation_exposureTRUE:hurricane", term)),
+            "tables/imputation_results.csv")
+}
+
+ggplot(all_final_coefs %>% 
+         filter(model_group == "CITS: w/ pooled imputation" &
+                  grepl("inundation_exposureTRUE:hurricane", term))) +
+  geom_errorbar(aes(y = model_type, x = estimate,
+                    xmin = conf.low, xmax = conf.high, color = model_group),
+                width = 0.5, linewidth = 2, position = position_dodge(width = 0.6)) +
+  geom_point(aes(y = model_type, x = estimate), 
+             color = "black", size = 4, position = position_dodge(width = 0.6)) +
+  geom_text(aes(y = model_type, x = estimate, label = plot_estimate), 
+            color = "black", size = 4, vjust = -2.5) +
+  # scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+  scale_color_manual(values = "darkblue") +
+  geom_vline(xintercept = 1, color = "darkgrey", linetype = "dashed") +
+  xlim(0.25, 2.2) +
+  labs(x = "Incidence rate ratio", y = "") +
+  theme_bw() +
+  theme(panel.grid.minor.x = element_blank(), 
+        panel.grid.major.x = element_blank(),
+        axis.text.y = element_text(size = 14, color = "black"),
+        axis.text.x = element_text(size = 10, color = "black"),
+        axis.title = element_text(size = 12, color = "black", face = "bold"),
+        legend.position = "none",
+        plot.margin = unit(c(0.1,0.1,0.1,0.1), "cm"))
+
+if (FALSE) {
+  ggsave("figures/pooled_imputed_results.svg", dpi = 600, height = 4, width = 6)
+}

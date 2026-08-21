@@ -84,4 +84,7 @@ summary_table(table_data_c, demographic_stats, by = "exposure_desc")
  
 ```
 
-
+# TODO: insert regression tables
+  - Main results w/ pooled, imputation results and sample sizes + case totals
+  - results for private well analyses
+  - senstivity analyses?
