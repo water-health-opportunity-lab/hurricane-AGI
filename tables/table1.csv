@@ -1,0 +1,7 @@
+"","model_group","model_type","plot_estimate","nobs","total_events"
+"1","CITS: main model","CITS: main model (3-week)","1.11 [0.59, 2.07]",7940,547986
+"2","CITS: main model","CITS: main model (5-week)","1.14 [0.69, 1.91]",7940,547986
+"3","CITS: main model","CITS: main model (8-week)","1.16 [0.76, 1.76]",7940,547986
+"4","CITS: w/ pooled imputation","CITS: w/ pooled imputation (3-week)","1.07 [0.56, 2.03]",7940,876820
+"5","CITS: w/ pooled imputation","CITS: w/ pooled imputation (5-week)","1.09 [0.64, 1.86]",7940,876820
+"6","CITS: w/ pooled imputation","CITS: w/ pooled imputation (8-week)","1.10 [0.71, 1.70]",7940,876820

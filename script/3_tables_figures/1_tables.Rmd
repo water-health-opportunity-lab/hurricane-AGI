@@ -3,13 +3,13 @@ title: "1_tables"
 output: html_document
 ---
 
-Primary Authors: Katie O'Brien, Amina Pasha, Jahred Liddie
-Purpose: 
+Purpose: Generate supplemental and regression tables
+
 Date created: February 23, 2026
 
+**Note: this RMD was not fully formatted to be knitted, but was only for retrieving and saving relevant tables for this manuscript.**
 
-Set up 
-```{r}
+```{r setup, include=FALSE}
 library(tidycensus)
 library(qwraps2)
 library(tigris)
@@ -36,12 +36,15 @@ table_data <- full_join(demodata, exposure_data, by = "zip3")
 # creating new column labeling exposure to flooding to clean up table columns
 table_data <- table_data |> mutate(exposure_desc = if_else(inundation_exposure == TRUE, "Exposed to Flooding", "Not Exposed to Flooding"))
 
+# analytic datasets
+dat <- read_csv("../../data/processed_data/analytic_dataset.csv")
+dat_all_imputed <- read_csv("../../data/processed_data/analytic_imputed_datasets.csv")
+
 ```
 
+# Table S1: demographic comparison between exposure groups
 
-
-```{r}
-
+```{r, results='asis'}
 options(qwraps2_markup = "markdown")
 
 # cleans table data
@@ -53,27 +56,45 @@ table_data_c <- table_data %>%
 # template for table
 demographic_stats <- 
   list("Race and Ethnicity" = 
-         list("Total Population" = ~ format(sum(estimate_total_population, na.rm = TRUE), big.mark = ","), 
-              "non-Hispanic Black" = ~paste0(format(sum(estimate_black, na.rm = TRUE), big.mark = ","), 
-                                             " (", round(sum(estimate_black, na.rm = TRUE) / sum(estimate_total_population, na.rm = TRUE)*100, 1), "%)"), 
-              "non-Hispanic White" = ~paste0(format(sum(estimate_white, na.rm = TRUE), big.mark = ","), 
-                                             " (", round(sum(estimate_white, na.rm = TRUE) / sum(estimate_total_population, na.rm = TRUE)*100, 1), "%)"), 
-              "non-Hispanic Asian" = ~paste0(format(sum(estimate_asian, na.rm = TRUE), big.mark = ","), 
-                                             " (", round(sum(estimate_asian, na.rm = TRUE) / sum(estimate_total_population, na.rm = TRUE)*100, 1), "%)"),
-              "non-Hispanic American Indian or Alaskan Native" = ~paste0(format(sum(estimate_AI_AN, na.rm = TRUE), big.mark = ","), 
-                                             " (", round(sum(estimate_AI_AN, na.rm = TRUE) / sum(estimate_total_population, na.rm = TRUE)*100, 1), "%)"),
-              "non-Hispanic Two or More Races" = ~paste0(format(sum(estimate_two_more, na.rm = TRUE), big.mark = ","), 
-                                             " (", round(sum(estimate_two_more, na.rm = TRUE) / sum(estimate_total_population, na.rm = TRUE)*100, 1), "%)"),
-              "Hispanic" = ~paste0(format(sum(estimate_hispanic, na.rm = TRUE), big.mark = ","), 
-                                             " (", round(sum(estimate_hispanic, na.rm = TRUE) / sum(estimate_total_population, na.rm = TRUE)*100, 1), "%)")), 
+         list("Total Population" = ~ format(round(sum(estimate_total_population, na.rm = TRUE), -2),
+                                            big.mark = ","), 
+              "non-Hispanic Black" = ~paste0(format(round(sum(estimate_black, na.rm = TRUE), -2),
+                                                    big.mark = ","), 
+                                             " (", round(sum(estimate_black, na.rm = TRUE) / 
+                                                           sum(estimate_total_population, na.rm = TRUE)*100, 1), "%)"), 
+              "non-Hispanic White" = ~paste0(format(round(sum(estimate_white, na.rm = TRUE), -2),
+                                                    big.mark = ","), 
+                                             " (", round(sum(estimate_white, na.rm = TRUE) / 
+                                                           sum(estimate_total_population, na.rm = TRUE)*100, 1), "%)"), 
+              "non-Hispanic Asian" = ~paste0(format(round(sum(estimate_asian, na.rm = TRUE), -2),
+                                                          big.mark = ","), 
+                                             " (", round(sum(estimate_asian, na.rm = TRUE) / 
+                                                           sum(estimate_total_population, na.rm = TRUE)*100, 1), "%)"),
+              "non-Hispanic American Indian or Alaskan Native" = ~paste0(format(round(sum(estimate_AI_AN, na.rm = TRUE), -2),
+                                                                                big.mark = ","), 
+                                             " (", round(sum(estimate_AI_AN, na.rm = TRUE) / 
+                                                           sum(estimate_total_population, na.rm = TRUE)*100, 1), "%)"),
+              "non-Hispanic Two or More Races" = ~paste0(format(round(sum(estimate_two_more, na.rm = TRUE), -2),
+                                                                big.mark = ","), 
+                                             " (", round(sum(estimate_two_more, na.rm = TRUE) / 
+                                                           sum(estimate_total_population, na.rm = TRUE)*100, 1), "%)"),
+              "Hispanic" = ~paste0(format(round(sum(estimate_hispanic, na.rm = TRUE), -2),
+                                          big.mark = ","), 
+                                             " (", round(sum(estimate_hispanic, na.rm = TRUE) / 
+                                                           sum(estimate_total_population, na.rm = TRUE)*100, 1), "%)")), 
   "Other Demographic Factors" = 
-         list("Median Household Income [USD]" = ~mean_sd(avg_med_income), 
-              "Number of Rural Households" = ~paste0(format(sum(rural_hhs, na.rm = TRUE), big.mark = ","), 
-                                                     " (", round(sum(rural_hhs, na.rm = TRUE) / sum(total_hhs, na.rm = TRUE)*100, 1), "%)"),
-              "No Health Insurance" = ~paste0(format(sum(estimate_uninsured, na.rm = TRUE), big.mark = ","), 
-                                              " (", round(sum(estimate_uninsured, na.rm = TRUE) / sum(estimate_total_ins, na.rm =TRUE) *100, 1), "%)"), 
-              "Area [sqmi]" = ~format(sum(as.numeric(area_sqmi), na.rm = TRUE), big.mark = ","), 
-              "Population Density [People per sqmi]" = ~round(sum(estimate_total_population, na.rm = TRUE) / sum(area_sqmi, na.rm = TRUE), 1)))
+         list("Median Household Income [USD]" = ~mean_sd(avg_med_income, digits = 0), 
+              "Number of Rural Households" = ~paste0(format(round(sum(rural_hhs, na.rm = TRUE), -2),
+                                                            big.mark = ","), 
+                                                     " (", round(sum(rural_hhs, na.rm = TRUE) / 
+                                                                   sum(total_hhs, na.rm = TRUE)*100, 1), "%)"),
+              "Health Insurance" = ~paste0(format(round(sum(estimate_uninsured, na.rm = TRUE), -2),
+                                                  big.mark = ","), 
+                                              " (", round(sum(estimate_uninsured, na.rm = TRUE) / 
+                                                            sum(estimate_total_ins, na.rm =TRUE) *100, 1), "%)"), 
+              "Area [sqmi]" = ~format(round(sum(as.numeric(area_sqmi), na.rm = TRUE), -1), big.mark = ","), 
+              "Population Density [People per sqmi]" = ~round(sum(estimate_total_population, na.rm = TRUE) / 
+                                                                sum(area_sqmi, na.rm = TRUE), 0)))
 
 
 summary_table(table_data_c, demographic_stats)
@@ -84,7 +105,42 @@ summary_table(table_data_c, demographic_stats, by = "exposure_desc")
  
 ```
 
+
+```{r}
+# assemble table 2
+results_files <- list.files("../../tables")
+
+main_results_files <- results_files[
+  grepl(paste(c("main_model","imputation_results"), collapse = "|"), results_files)]
+
+main_results_files <- paste("../../tables/", main_results_files, sep = "")
+
+main_results <- read.csv(main_results_files[2])
+pooled_results <- read.csv(main_results_files[1])
+
+main_results <- main_results %>%
+  dplyr::select(model_group, model_type, plot_estimate, nobs) %>%
+  mutate(total_events = sum(dat$n_events))
+
+total_imputed_events <- dat_all_imputed %>% 
+  group_by(imputation) %>% 
+  summarise(n = sum(completed_events)) %>% 
+  ungroup()
+
+pooled_results <- pooled_results %>%
+  dplyr::select(model_group, model_type, plot_estimate) %>%
+  mutate(nobs = unique(table(dat_all_imputed$imputation)),
+         total_events = round(median(total_imputed_events$n), 0))
+
+table_one <- rbind(main_results, pooled_results)
+
+if (FALSE) {
+  write.csv(table_one, "../../tables/table1.csv")
+}
+
+```
+
 # TODO: insert regression tables
-  - Main results w/ pooled, imputation results and sample sizes + case totals
-  - results for private well analyses
-  - senstivity analyses?
+- results for private well analyses
+- senstivity analyses (figure or table)
+- 
