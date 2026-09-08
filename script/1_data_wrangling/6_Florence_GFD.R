@@ -120,7 +120,7 @@ flor_final_df <- flor_final_df %>%
 
 # assigning exposure
 flor_final_df <- flor_final_df %>%
-  mutate(exposure_assignment = ifelse(percent_flooded_msq > 50, "Exposed", "Unexposed")) %>%
+  mutate(inundation_exposure = ifelse(percent_flooded_msq > 50, TRUE, FALSE)) %>%
   st_drop_geometry()
 
 # write to csv

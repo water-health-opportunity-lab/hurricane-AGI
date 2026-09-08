@@ -13,6 +13,12 @@ covariates <- read.csv("data/processed_data/env_data.csv")
 florence_exposure <- read.csv("data/processed_data/florence_exp.csv")
 
 ###############################################################################
+florence_exposure_long <- florence_exposure %>%
+  pivot_longer(cols = starts_with("population"),
+               names_to = c("year"),
+               values_to = c("total_population")) %>%
+  mutate(year = parse_number(year))
+
 # reformat outcome data into clean table
 outcomes <- separate_wider_delim(outcomes, cols = 1, delim = ",",
                                  names = c("x", "weeks_since_anchor", "StateOrProvinceConceptId",
@@ -121,12 +127,13 @@ join_outcomes <- join_outcomes %>%
 join_outcomes <- join_outcomes %>%       
   filter(year(as.Date(join_outcomes$week_start, format = "%Y%m%d")) != 2016)
 
-florence_exposure$zip3 <- as.factor(florence_exposure$zip3)
+florence_exposure_long$zip3 <- as.factor(florence_exposure_long$zip3)
 
 join_outcomes_exposure <- left_join(join_outcomes, 
-                                    florence_exposure %>% 
-                                      dplyr::select(zip3, inundation_exposure = exposure_assignment),
-                                    by = c("zip3"))
+                                    florence_exposure_long %>% 
+                                      dplyr::select(zip3, total_population, year,
+                                                    inundation_exposure),
+                                    by = c("zip3", "year"))
 
 # drop data after 2018 for florence analyses
 join_outcomes_exposure <- join_outcomes_exposure %>%

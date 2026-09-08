@@ -1,6 +1,6 @@
 ################################################################################
 # Primary authors: Jahred Liddie, Katie O'Brien
-# Purpose: statistical analyses
+# Purpose: primary statistical and sensitivity analyses for Hurricane Helene
 # Date created: 3/2/2026
 ################################################################################
 library(broom)

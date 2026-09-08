@@ -274,7 +274,7 @@ if (FALSE) {
 
 # pivot to long form for gif and pull out time points from column titles
 gif_long <- final_df %>%
-  select(zip3, geometry, starts_with("Flood_")) %>%
+  dplyr::select(zip3, geometry, starts_with("Flood_")) %>%
   pivot_longer(
     cols = starts_with("Flood_"), 
     names_to = "time_point", 
@@ -350,7 +350,7 @@ final_df_long <- final_df_long %>%
 
 if (FALSE) {
   # shared drive: 
-  write.csv(final_df_long, ".../.../.../.../.../2-aims/aim3/3_processed_data/zip3_exposure_dataset.csv")
+  write.csv(final_df_long, "data/processed_data/zip3_exposure_dataset.csv")
   
   # repo directory:
   write.csv(final_df_long, "data/processed_data/zip3_exposure_dataset.csv")
