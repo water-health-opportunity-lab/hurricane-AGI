@@ -4,7 +4,6 @@
 # Hurricane Florence in North Carolina. 
 # Date created: August 3, 2026
 ###############################################################################
-
 # set up 
 library(sf)
 library(terra)
@@ -15,11 +14,12 @@ library(ggspatial)
 
 ###############################################################################
 
-# TODO: determine where this is coming from to read in
-# final_df <- read.csv(zip3_exposure_dataset.csv)
+message("Make sure file paths for raw flooding data are set prior to running source():")
+
+source("script/1_data_wrangling/1_zip3_wrangling.R")
 
 # import data (replace with file location for raw data)
-flood_dat <- st_read("../../../../../OneDrive-SharedLibraries-TheGeorgeWashingtonUniversity/Hu, Cindy - REACH pilot/2-aims/aim3-AGI/2_raw_data/01_exposure_assessment/Global Flood Database/Global_Flood_Records.gpkg")
+flood_dat <- st_read("data/raw_data/01_exposure_assessment/Global Flood Database/Global_Flood_Records.gpkg")
 
 # testing import, plotting all events
 plot(flood_dat$geom)
@@ -44,9 +44,9 @@ flor_raster <- rasterize(flor_vect, empty_raster, field = "val", background = NA
 # plotting as test
 plot(flor_raster)
 
-
 # plotting zip3 units
 plot(final_df$geometry)
+
 # checking coordinate reference systems of the zip3 polygons and florence raster
 crs(final_df)
 crs(flor_raster)
@@ -120,10 +120,10 @@ flor_final_df <- flor_final_df %>%
 
 # assigning exposure
 flor_final_df <- flor_final_df %>%
-  mutate(exposure_assignment = ifelse(percent_flooded_msq > 50, "Exposed", "Unexposed"))
+  mutate(exposure_assignment = ifelse(percent_flooded_msq > 50, "Exposed", "Unexposed")) %>%
+  st_drop_geometry()
 
 # write to csv
 if (FALSE) {
   write.csv(flor_final_df, "data/processed_data/florence_exp.csv")
 }
-

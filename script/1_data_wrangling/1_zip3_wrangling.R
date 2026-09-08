@@ -102,7 +102,7 @@ nc_final <- nc_pop_zip3_wide %>%
 # flood data ------ (Global Flood Monitoring System (GFMS) data)
 
 # need to change out file path for where the 'Completed .tif files' folder is stored
-filepath <- '.../.../.../.../2-aims/aim3/2_raw_data/01_exposure_assessment/Satellite-based inundation map/Completed .tif files'
+filepath <- 'data/raw_data/01_exposure_assessment/Satellite-based inundation map/Completed .tif files'
 
 files <- list.files(filepath, pattern = "\\.tif$", full.names=TRUE)
 
