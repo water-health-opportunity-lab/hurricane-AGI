@@ -9,6 +9,7 @@ library(spdep)
 library(tigris)
 library(tidyverse)
 
+# TODO: use "here" for file paths
 dat <- read_csv("data/processed_data/analytic_dataset.csv")
 dat$zip3 <- as.character(dat$zip3)
 
@@ -80,19 +81,21 @@ m1a <- glm(n_events ~ inundation_exposure*hurricane_3week +
              log(neighbor_cases_weighted + 1), 
            offset = log(total_population),
            data = dat, family = "quasipoisson")
-
+    
 three_week_SAC <- map_dfr(three_weeks, 
                           ~eval_SAC.f(hurricane_week = .x, 
                                       model_dataset = dat, model = m1a))
 
-  # check the residuals by plotting against time:
-  # dat$resid <- residuals(m1a, type="deviance")
+  # # check the residuals by plotting against time:
+  # dat$resid <- residuals(m1a, type="pearson")
   # 
   # plot(dat$weeks_since_anchor, dat$resid,
   #      ylim=c(-60,60),pch=19,cex=0.7,col=grey(0.6),
   #      main="Residuals over time",ylab="Deviance residuals",xlab="Date")
   # abline(h=0,lty=2,lwd=2)
-
+  # 
+  # pacf(dat$resid)
+  
 # varying hurricane period:
 m1b <- glm(n_events ~ inundation_exposure*hurricane_5week +
              inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month) +
@@ -120,13 +123,11 @@ m1c <- glm(n_events ~ inundation_exposure*hurricane_8week +
 eight_week_SAC <- map_dfr(eight_weeks, 
                           ~eval_SAC.f(hurricane_week = .x, model_dataset = dat, model = m1c))
 
-  # # check the residuals by plotting against time
-  # dat$resid <- residuals(m1c, type="deviance")
-  # 
-  # plot(dat$weeks_since_anchor, dat$resid,
-  #      ylim=c(-60,60),pch=19,cex=0.7,col=grey(0.6),
-  #      main="Residuals over time",ylab="Deviance residuals",xlab="Date")
-  # abline(h=0,lty=2,lwd=2)
+################################################################################
+##### Sensitivity analyses below examine choices in model specification:
+  # 1) include season FEs (vs month FEs), 2) assume negative binomial distributed errors,
+  # 3) include various temperature and humidity variables, 
+  # 4) exclude period after first three weeks post-hurricane
 
 # season fixed effects
 m2 <- glm(n_events ~ inundation_exposure*hurricane_3week +
@@ -241,6 +242,22 @@ m1a_exclfoodborne <- glm(n_nonfoodborne ~ inundation_exposure*hurricane_3week +
   #                          offset = log(total_population),
   #                          data = dat, family = "quasipoisson")
 
+  # TODO: considering temporal autocorrelation, dropping spatial lag
+  # dat <- dat %>%
+  #   arrange(zip3, -desc(week_start))
+  # 
+  # dat$zip3 <- as.factor(dat$zip3)
+  # 
+  # m1b <- geeasy::geelm(n_events ~ inundation_exposure*hurricane_3week +
+  #                        inundation_exposure*as.factor(year) + inundation_exposure*as.factor(month),
+  #                      id = zip3,
+  #                      offset = log(total_population),
+  #                      corstr = "ar1",
+  #                      data = dat,
+  #                      family = "poisson")
+  # 
+  # summary(m1b)
+
 ################################################################################
 # sensitivity analyses below use a dataset at the state-by-week level 
 # that includes events that occurred in masked geographic units
@@ -263,7 +280,7 @@ m1c_ITS_state <- glm(n_events ~ hurricane_8week +
 
 ################################################################################
 ##### secondary analyses with private well populations
-# this uses an arbitrary cutpoint to define groups, 
+# this uses an 30% cutpoint to define groups, 
   # but other cutpoints and a continuous measure yielded similar results
 dat <- dat %>%
   mutate(high_private_wells = ifelse(weighted_percent_wells > 30, TRUE, FALSE))

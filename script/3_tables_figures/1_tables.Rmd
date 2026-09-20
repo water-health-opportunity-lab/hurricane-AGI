@@ -105,9 +105,10 @@ summary_table(table_data_c, demographic_stats, by = "exposure_desc")
  
 ```
 
+# Table 1: regression results from primary models
 
 ```{r}
-# assemble table 2
+# assemble table 1
 results_files <- list.files("../../tables")
 
 main_results_files <- results_files[
@@ -142,5 +143,20 @@ if (FALSE) {
 
 # TODO: insert regression tables
 - results for private well analyses
-- senstivity analyses (figure or table)
-- 
+- sensitivity analyses (figure or table)
+
+# Hurricane Florence results
+
+```{r}
+florence_results <- read.csv(paste("../../tables/", results_files[1], sep = ""))
+
+florence_results_table <- florence_results %>%
+  dplyr::select(model_group, model_type, plot_estimate, nobs)
+
+if (FALSE) {
+  write.csv(florence_results_table, "../../tables/tableS2.csv")
+}
+
+```
+
+
