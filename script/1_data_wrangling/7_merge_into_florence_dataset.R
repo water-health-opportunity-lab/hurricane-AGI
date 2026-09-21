@@ -6,11 +6,11 @@
 
 library(tidyverse)
 
-outcomes <- read_csv("data/raw_data/raw_truveta_export_01272026.csv")
+outcomes <- read_csv(here("data", "raw_data", "raw_truveta_export_01272026.csv"))
 
-covariates <- read.csv("data/processed_data/env_data.csv")
+covariates <- read.csv(here("data", "processed_data", "env_data.csv"))
 
-florence_exposure <- read.csv("data/processed_data/florence_exp.csv")
+florence_exposure <- read.csv(here("data", "processed_data", "florence_exp.csv"))
 
 ###############################################################################
 florence_exposure_long <- florence_exposure %>%

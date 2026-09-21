@@ -3,7 +3,6 @@
 # zip3 spatial scale and weekly temporal scale. 
 # Date created: January 16, 2026
 ###############################################################################
-# set up 
 library(prism)
 library(terra)
 library(lubridate)
@@ -14,8 +13,7 @@ library(stringr)
 library(tibble)
 library(dplyr)
 
-source("script/1_data_wrangling/1_zip3_wrangling.R")
-
+source(here("script", "1_data_wrangling", "1_zip3_wrangling.R"))
 
 ###############################################################################
 

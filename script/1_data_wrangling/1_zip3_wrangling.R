@@ -6,16 +6,15 @@
   # the mean value in each zip3 level for Hurricane Helene. 
 # date created: 11/14/2025
 ################################################################################
-
-# set up ------------
 library(sf)
 library(exactextractr)
 library(terra)
 library(tidyr)
 library(tigris)
 library(tidycensus)
-library(tidyverse)
 library(gganimate)
+library(here)
+library(tidyverse)
 
 ################################################################################
 # set your API key, save your API key in .renviron, don't save it in the script
@@ -349,9 +348,5 @@ final_df_long <- final_df_long %>%
   st_drop_geometry()
 
 if (FALSE) {
-  # shared drive: 
-  write.csv(final_df_long, "data/processed_data/zip3_exposure_dataset.csv")
-  
-  # repo directory:
-  write.csv(final_df_long, "data/processed_data/zip3_exposure_dataset.csv")
+  write.csv(final_df_long, here("data", "processed_data", "zip3_exposure_dataset.csv"))
 }

@@ -6,9 +6,9 @@
 
 library(tidyverse)
 
-dat <- read_csv("data/processed_data/analytic_dataset.csv")
+dat <- read_csv(here("data", "processed_data", "analytic_dataset.csv"))
 
-dat_all_imputed <- read_csv("data/processed_data/analytic_imputed_datasets.csv")
+dat_all_imputed <- read_csv(here("data", "processed_data", "analytic_imputed_datasets.csv"))
 
 ###############################################################################
 # 1) exploratory plots:
@@ -91,7 +91,7 @@ ggplot(agg_dat %>% filter(year == 2024), aes(x = date, y = sum_events)) +
   theme(axis.text.x = element_text(angle = 45, vjust = 0.75))
 
 if (FALSE) {
-  ggsave("figures/state_level_cases_trend.png", dpi = 600, height = 4, width = 6)
+  ggsave(here("figures", "state_level_cases_trend.png"), dpi = 600, height = 4, width = 6)
 }
 
 ggplot(agg_exposure_dat %>% filter(year == 2024 & month(date) >= 6), 
@@ -124,7 +124,8 @@ ggplot(agg_exposure_dat %>% filter(year == 2024 & month(date) >= 6),
         legend.position = "bottom")
 
 if (FALSE) {
-  ggsave("figures/treatment_group_level_cases_trend.png", dpi = 600, height = 4, width = 6.5)
+  ggsave(here("figures", "treatment_group_level_cases_trend.png"), 
+         dpi = 600, height = 4, width = 6.5)
 }
 
 ggplot(agg_exposure_dat %>% filter(year == 2024 & month(date) >= 6), 
@@ -158,7 +159,8 @@ ggplot(agg_exposure_dat %>% filter(year == 2024 & month(date) >= 6),
         legend.position = "bottom")
 
 if (FALSE) {
-  ggsave("figures/treatment_group_level_rate_trend.png", dpi = 600, height = 4, width = 6.5)
+  ggsave(here("figures", "treatment_group_level_rate_trend.png"), 
+         dpi = 600, height = 4, width = 6.5)
 }
 
 ggplot(agg_exposure_dat %>% filter(year == 2024 & month(date) >= 6), 
@@ -191,7 +193,8 @@ ggplot(agg_exposure_dat %>% filter(year == 2024 & month(date) >= 6),
         legend.position = "bottom")
 
 if (FALSE) {
-  ggsave("figures/mean_precip_trend.png", dpi = 600, height = 4, width = 6.5)
+  ggsave(here("figures", "mean_precip_trend.png"), 
+         dpi = 600, height = 4, width = 6.5)
 }
 
 # plotting several years over one another
@@ -212,7 +215,8 @@ ggplot(agg_dat %>% filter(year %in% c(2021:2024)),
         legend.position = "bottom")
 
 if (FALSE) {
-  ggsave("figures/year_comparison.png", dpi = 600, height = 4, width = 6)
+  ggsave(here("figures", "year_comparison.png"), 
+         dpi = 600, height = 4, width = 6)
 }
 
 ggplot(dat %>% filter(year == 2024 & month(date) >= 6), 
@@ -241,7 +245,8 @@ ggplot(dat %>% filter(year == 2024 & month(date) >= 6),
         legend.position = "bottom")
 
 if (FALSE) {
-  ggsave("figures/zip3_level_rate_trend.png", dpi = 600, height = 7, width = 9)
+  ggsave(here("figures", "zip3_level_rate_trend.png"), 
+         dpi = 600, height = 7, width = 9)
 }
 
 ################################################################################
@@ -275,7 +280,7 @@ short_dat <- dat %>%
 summary(
   lm(case_rate_per10k ~ hurricane_8week, data = short_dat)
 )
-  
+
 ###############################################################################
 # This section adds an additional layer using the multiply imputed datasets
   # generated in script #3 in this folder.
