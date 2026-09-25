@@ -116,6 +116,7 @@ summary_table(table_data_c, demographic_stats, by = "exposure_desc")
 
 ```{r}
 # assemble table 1
+<<<<<<< HEAD
 results_files <- list.files(here("tables"))
 
 main_results_files <- results_files[
@@ -155,6 +156,9 @@ if (FALSE) {
 ```{r}
 # assemble table 1
 results_files <- list.files(here("tables"))
+=======
+results_files <- list.files("../../tables")
+>>>>>>> 7b3d554a6fff55417d734843e00f4b852f30da2e
 
 main_results_files <- results_files[
   grepl(paste(c("main_model","imputation_results"), collapse = "|"), results_files)]
@@ -204,6 +208,7 @@ if (FALSE) {
 
 ```
 
+<<<<<<< HEAD
 # Graphical abstract
 ```{r}
 # TODO create an example CITS figure?
@@ -299,4 +304,6 @@ ggplot(df, aes(x = time, y = count, color = group, group = group)) +
 
 ```
 
+=======
+>>>>>>> 7b3d554a6fff55417d734843e00f4b852f30da2e
 

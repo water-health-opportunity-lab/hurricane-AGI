@@ -221,7 +221,11 @@ ggplot(dat %>% filter(year == 2024 & month(date) >= 6),
 
 if (FALSE) {
   ggsave(here("figures", "mean_precip_trend.png"), 
+<<<<<<< HEAD
          dpi = 600, height = 6, width = 9)
+=======
+         dpi = 600, height = 4, width = 6.5)
+>>>>>>> 7b3d554a6fff55417d734843e00f4b852f30da2e
 }
 
 # plotting several years over one another
@@ -277,7 +281,10 @@ if (FALSE) {
 }
 
 ################################################################################
+<<<<<<< HEAD
 # unadjusted comparisons as EDA
+=======
+>>>>>>> 7b3d554a6fff55417d734843e00f4b852f30da2e
 short_dat <- dat %>%
       filter(date >= as.Date("2024-09-27") - 21 & date < as.Date("2024-09-27") + 21)
 
@@ -314,6 +321,7 @@ summary(
   # generated in script #3 in this folder.
 agg_exposure_masked_dat <- dat_all_imputed %>%
   group_by(date, year, inundation_exposure, imputation) %>%
+<<<<<<< HEAD
   summarise(sum_events = sum(completed_events),
             sum_pop = sum(total_population),
             hurricane_3week = unique(hurricane_3week),
@@ -376,3 +384,47 @@ if (FALSE) {
   ggsave(here("figures", "figure_2.svg"), 
          dpi = 600, height = 5, width = 8)
 }
+=======
+  summarise(sum_events = sum(n_events),
+            sum_pop = sum(total_population),
+            hurricane_3week = unique(hurricane_3week),
+            hurricane_5week = unique(hurricane_5week),
+            hurricane_8week = unique(hurricane_8week),
+            # mean of means for ppt and temp
+            ppt_mean = mean(ppt_mean),
+            tmean = mean(tmean)) %>%
+  ungroup() %>%
+  mutate(case_rate_per10k = sum_events/sum_pop*1e4,
+         inundation_exposure_plot = ifelse(inundation_exposure, "Flooded", "Non-flooded")) 
+
+ggplot(agg_exposure_masked_dat %>% filter(year == 2024 & month(date) >= 6), 
+       aes(x = date, y = case_rate_per10k,
+           group = interaction(imputation, inundation_exposure_plot))) +
+  # geom_rect(aes(xmin = as.Date('2024-09-27'),
+  #               xmax = as.Date("2024-11-15"),
+  #               ymin = -Inf,
+  #               ymax = Inf), fill = 'lightgrey', color = "lightgrey", alpha = 0.5) +
+  # geom_rect(aes(xmin = as.Date('2024-09-27'),
+  #               xmax = as.Date("2024-10-25"),
+  #               ymin = -Inf,
+  #               ymax = Inf), fill = 'grey', color = "grey", alpha = 0.5) +
+  # geom_rect(aes(xmin = as.Date('2024-09-27'),
+  #               xmax = as.Date("2024-10-11"),
+  #               ymin = -Inf,
+  #               ymax = Inf), fill = 'darkgrey', color = "darkgrey", alpha = 0.5) +
+  geom_point() +
+  geom_line()
+  geom_label(x = as.Date('2024-10-04'), y = 3.25, label = "3 weeks", size = 2,
+             color = "black", fill = NA, fontface = "bold") +
+  geom_label(x = as.Date('2024-10-18'), y = 3.25, label = "5 weeks", size = 2,
+             color = "black", fill = NA, fontface = "bold") +
+  geom_label(x = as.Date('2024-11-05'), y = 3.25, label = "8 weeks", size = 2,
+             color = "black", fill = NA, fontface = "bold") +
+  labs(x = "Date", y = "AGI visits per 10k") +
+  ylim(0.5, 3.3) +
+  scale_color_manual(values = c("Flooded" = "darkblue", "Non-flooded" = "darkred"),
+                     name = "") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.75),
+        legend.position = "bottom")
+>>>>>>> 7b3d554a6fff55417d734843e00f4b852f30da2e

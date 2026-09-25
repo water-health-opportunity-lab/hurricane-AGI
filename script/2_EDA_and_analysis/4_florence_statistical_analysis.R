@@ -160,6 +160,10 @@ all_final_summary <- all_final_summary %>%
 if (FALSE) {
   write.csv(all_final_summary %>% 
               dplyr::filter(grepl("inundation_exposureTRUE:hurricane", term)),
+<<<<<<< HEAD
             here("regression_results", "Florence_model_results.csv"))
+=======
+            here("tables", "Florence_model_results.csv"))
+>>>>>>> 7b3d554a6fff55417d734843e00f4b852f30da2e
   
 }
