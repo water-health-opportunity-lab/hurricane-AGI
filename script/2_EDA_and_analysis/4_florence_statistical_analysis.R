@@ -8,11 +8,13 @@ library(MASS)
 library(spdep)
 library(tigris)
 library(tidyverse)
+library(here)
 
-dat <- read_csv("data/processed_data/florence_analytic_dataset.csv")
+dat <- read_csv(here("data", "processed_data", "florence_analytic_dataset.csv"))
+
 dat$zip3 <- as.character(dat$zip3)
 
-source("script/2_EDA_and_analysis/analysis_functions.R")
+source(here("script", "2_EDA_and_analysis", "analysis_functions.R"))
 
 ################################################################################
 # getting zcta shapes using tigris package - 2020 is most recent available
@@ -158,6 +160,6 @@ all_final_summary <- all_final_summary %>%
 if (FALSE) {
   write.csv(all_final_summary %>% 
               dplyr::filter(grepl("inundation_exposureTRUE:hurricane", term)),
-            "tables/Florence_model_results.csv")
+            here("regression_results", "Florence_model_results.csv"))
   
 }

@@ -7,22 +7,25 @@ Purpose: Generate supplemental and regression tables
 
 Date created: February 23, 2026
 
-**Note: this RMD was not fully formatted to be knitted, but was only for retrieving and saving relevant tables for this manuscript.**
+**Note: this RMD was not fully formatted to be knitted, but rather for retrieving and saving relevant tables for this manuscript.**
 
 ```{r setup, include=FALSE}
+
 library(tidycensus)
 library(qwraps2)
 library(tigris)
 library(dplyr)
 library(stringr)
 library(sf)
+library(here)
+library(tidyverse)
 
 # pull in data
-exposure_data_full <- read.csv("../../data/processed_data/zip3_exposure_dataset.csv")
+exposure_data_full <- read.csv(here("data", "processed_data", "zip3_exposure_dataset.csv"))
 
-env_data <- read.csv("../../data/processed_data/env_data.csv")
+env_data <- read.csv(here("data", "processed_data", "env_data.csv"))
 
-demodata <- read.csv("../../data/processed_data/demodata.csv")
+demodata <- read.csv(here("data", "processed_data", "demodata.csv"))
 
 # subsetting exposure_data to just the 2024 year (refers only to population), so that we have a dataframe with exposure for each zip3
 exposure_data <- subset(exposure_data_full, subset = exposure_data_full$year == "2024")
@@ -33,12 +36,16 @@ demodata$zip3 <- as.character(demodata$zip3)
 
 table_data <- full_join(demodata, exposure_data, by = "zip3")
 
-# creating new column labeling exposure to flooding to clean up table columns
-table_data <- table_data |> mutate(exposure_desc = if_else(inundation_exposure == TRUE, "Exposed to Flooding", "Not Exposed to Flooding"))
+# creating new column labeling exposure to flooding for table columns
+table_data <- table_data |> 
+  mutate(exposure_desc = if_else(inundation_exposure == TRUE, 
+                                 "Exposed to Flooding", 
+                                 "Not Exposed to Flooding")
+         )
 
 # analytic datasets
-dat <- read_csv("../../data/processed_data/analytic_dataset.csv")
-dat_all_imputed <- read_csv("../../data/processed_data/analytic_imputed_datasets.csv")
+dat <- read.csv(here("data", "processed_data", "analytic_dataset.csv"))
+dat_all_imputed <- read.csv(here("data", "processed_data", "analytic_imputed_datasets.csv"))
 
 ```
 
@@ -105,10 +112,49 @@ summary_table(table_data_c, demographic_stats, by = "exposure_desc")
  
 ```
 
+# Table 1: regression results from primary models
 
 ```{r}
-# assemble table 2
-results_files <- list.files("../../tables")
+# assemble table 1
+results_files <- list.files(here("tables"))
+
+main_results_files <- results_files[
+  grepl(paste(c("main_model","imputation_results"), collapse = "|"), 
+        results_files)]
+
+main_results_files <- paste("../../tables/", main_results_files, sep = "")
+
+main_results <- read.csv(main_results_files[2])
+pooled_results <- read.csv(main_results_files[1])
+
+main_results <- main_results %>%
+  dplyr::select(model_group, model_type, plot_estimate, nobs) %>%
+  mutate(total_events = sum(dat$n_events))
+
+total_imputed_events <- dat_all_imputed %>% 
+  group_by(imputation) %>% 
+  summarise(n = sum(completed_events)) %>% 
+  ungroup()
+
+pooled_results <- pooled_results %>%
+  dplyr::select(model_group, model_type, plot_estimate) %>%
+  mutate(nobs = unique(table(dat_all_imputed$imputation)),
+         total_events = round(median(total_imputed_events$n), 0))
+
+table_one <- rbind(main_results, pooled_results)
+
+if (FALSE) {
+  write.csv(table_one, here("regression_results", "tables", "table1.csv"))
+}
+
+```
+
+# Analyses focused on private wells
+
+
+```{r}
+# assemble table 1
+results_files <- list.files(here("tables"))
 
 main_results_files <- results_files[
   grepl(paste(c("main_model","imputation_results"), collapse = "|"), results_files)]
@@ -135,12 +181,122 @@ pooled_results <- pooled_results %>%
 table_one <- rbind(main_results, pooled_results)
 
 if (FALSE) {
-  write.csv(table_one, "../../tables/table1.csv")
+  write.csv(table_one, here("tables", "table1.csv"))
 }
 
 ```
 
-# TODO: insert regression tables
+
 - results for private well analyses
-- senstivity analyses (figure or table)
-- 
+- sensitivity analyses (figure or table)
+
+# Hurricane Florence results
+
+```{r}
+florence_results <- read.csv(paste("../../tables/", results_files[1], sep = ""))
+
+florence_results_table <- florence_results %>%
+  dplyr::select(model_group, model_type, plot_estimate, nobs)
+
+if (FALSE) {
+  write.csv(florence_results_table, "../../tables/tableS2.csv")
+}
+
+```
+
+# Graphical abstract
+```{r}
+# TODO create an example CITS figure?
+
+CITS_dat <- tibble(
+  t = c(1:50, 1:50),
+  group = c(rep("Exposed", 50), rep("Unexposed", 50)),
+  event = ifelse(t < 25, 0, )
+  outcome = ifelse(
+    group == "Exposed", rpois(n = 50, 2), rpois(n = 50, 2 + 0.5)
+    
+  )
+)
+
+```
+
+```{r}
+
+set.seed(42)
+
+# 1. Define study parameters
+n_timepoints <- 40
+intervene_at <- 21  # Intervention occurs at time point 21
+
+# 2. Build full factorial grid (Time x Group)
+df <- expand.grid(
+  time = 1:n_timepoints,
+  group = c("Control", "Treatment")
+) %>%
+  mutate(
+    group_num  = ifelse(group == "Treatment", 1, 0),
+    post       = ifelse(time >= intervene_at, 1, 0),
+    time_after = ifelse(post == 1, time - intervene_at + 1, 0)
+  )
+
+# 3. Define log-linear coefficients (log scale for count data)
+beta_0 <- 2.50   # Baseline log count (Control at t = 0)
+beta_1 <- 0.01   # Pre-intervention slope (Control)
+beta_2 <- 0.20   # Baseline group difference (Treatment vs Control)
+beta_3 <- 0.005  # Pre-intervention slope difference
+beta_4 <- -0.05  # Control level change post-intervention (external shock)
+beta_5 <- -0.002 # Control slope change post-intervention
+beta_6 <- 0.40   # Immediate intervention level change (Treatment effect)
+beta_7 <- 0.035  # Sustained intervention slope change (Treatment effect)
+
+# 4. Compute expected mean (mu) and generate Poisson count outcome
+df <- df %>%
+  mutate(
+    log_mu = beta_0 + 
+             beta_1 * time + 
+             beta_2 * group_num + 
+             beta_3 * (time * group_num) + 
+             beta_4 * post + 
+             beta_5 * time_after + 
+             beta_6 * (post * group_num) + 
+             beta_7 * (time_after * group_num),
+    
+    mu = exp(log_mu),
+    
+    # Generate outcome Y ~ Poisson(mu)
+    count = rpois(n(), lambda = mu)
+  )
+
+# 5. Fit Poisson GLM to estimate parameters
+fit <- glm(
+  count ~ time * group_num + post * group_num + time_after * group_num,
+  family = poisson(link = "log"),
+  data = df
+)
+
+# Add predicted values to dataframe for smooth plotting
+df$pred <- predict(fit, type = "response")
+
+# 6. Plot Controlled Interrupted Time Series
+ggplot(df, aes(x = time, y = count, color = group, group = group)) +
+  geom_point(alpha = 0.6, size = 2) +
+  # Model fit trends pre and post-intervention
+  geom_line(aes(y = pred), size = 1) +
+  # Intervention vertical indicator line
+  geom_vline(xintercept = intervene_at - 0.5, linetype = "dashed", color = "black") +
+  annotate("text", x = intervene_at - 1, y = max(df$count), 
+           label = "Intervention", hjust = 1, fontface = "italic") +
+  scale_color_manual(values = c("Control" = "#2b5c8f", "Treatment" = "#d95f02")) +
+  labs(
+    title = "Controlled Interrupted Time Series (CITS)",
+    subtitle = "Simulated Poisson Count Outcome",
+    x = "Time Period",
+    y = "Count Outcome",
+    color = "Group"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
+
+```
+
+

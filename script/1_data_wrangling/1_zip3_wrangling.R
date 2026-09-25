@@ -6,16 +6,15 @@
   # the mean value in each zip3 level for Hurricane Helene. 
 # date created: 11/14/2025
 ################################################################################
-
-# set up ------------
 library(sf)
 library(exactextractr)
 library(terra)
 library(tidyr)
 library(tigris)
 library(tidycensus)
-library(tidyverse)
 library(gganimate)
+library(here)
+library(tidyverse)
 
 ################################################################################
 # set your API key, save your API key in .renviron, don't save it in the script
@@ -62,7 +61,6 @@ nc_pop_zip3_wide <- nc_pop_zip3 %>%
     names_sep = "_"
   )
 
-
 # spatial data ------------
 
 # getting zcta shapes using tigris package - 2020 is most recent available
@@ -85,24 +83,9 @@ nc_final <- nc_pop_zip3_wide %>%
   left_join(nc_zip3_geom, by = c("zip3" = "zip3")) %>%
   st_as_sf
 
-  # # map as test -- visualizing zip3 area
-  # ggplot(nc_final) +
-  #   geom_sf(aes(geometry=geometry, fill=zip3)) +
-  #   theme_minimal() +
-  #   labs(title = "zip3 area")
-  # 
-  # # map as test -- visualizing population
-  # ggplot(nc_final) +
-  #   geom_sf(aes(geometry=geometry,fill=population_2023), color="white") +
-  #   scale_fill_viridis_c(labels=scales::comma) +
-  #   theme_minimal()+
-  #   labs(title="2023 Population by Zip3 Level in North Carolina", 
-  #        fill = "Population")
-
-# flood data ------ (Global Flood Monitoring System (GFMS) data)
-
-# need to change out file path for where the 'Completed .tif files' folder is stored
-filepath <- 'data/raw_data/01_exposure_assessment/Satellite-based inundation map/Completed .tif files'
+# TODO: describe "completed tif files" folders
+filepath <- here("data", "raw_data", "01_exposure_assessment",
+                 "Satellite-based inundation map", "Completed .tif files")
 
 files <- list.files(filepath, pattern = "\\.tif$", full.names=TRUE)
 
@@ -219,13 +202,13 @@ ggplot(inundation_metrics) +
 
 # only rewrite if there are edits:
 if (FALSE) {
-  ggsave("figures/inundation_metric_comparison.png", dpi = 600, width = 7, height = 4)
+  ggsave(here("figures", "inundation_metric_comparison.png"), dpi = 600, width = 7, height = 4)
 }
 
 # map of mean % area inundated
 ggplot(final_df) +
   geom_sf(aes(fill = mean_flood_value), color="white") +
-  scale_fill_gradient(low = "white", high = "darkblue", labels = scales::percent,
+  scale_fill_gradient(low = "white", high = "#3B4E61", labels = scales::percent,
                       breaks = seq(0.1, 1, by = 0.3), limits = c(0.1, 1),
                       name = "Mean % area inundated") +
   theme_void() +
@@ -243,14 +226,14 @@ ggplot(final_df) +
   guides(fill = guide_colourbar(title.position = "top", title.hjust = 0.5))
 
 if (FALSE) {
-  ggsave("figures/mean_percent_inundated_map.png", dpi = 600, width = 7, height = 5)
+  ggsave(here("figures", "mean_percent_inundated_map.png"), dpi = 600, width = 7, height = 5)
 }
 
 # map of mean % area inundated
 ggplot(final_df %>% 
          mutate(inundation_exposure = ifelse(inundation_exposure == TRUE, "Flooded", "Non-flooded"))) +
   geom_sf(aes(fill = inundation_exposure), color="grey") +
-  scale_fill_manual(values = c("Non-flooded" = "white", "Flooded" = "darkblue"),
+  scale_fill_manual(values = c("Non-flooded" = "#5C3B25", "Flooded" = "#4B637B"),
                     name = "") +
   theme_void() +
   labs(title = "Inundation exposure assignment", 
@@ -266,7 +249,7 @@ ggplot(final_df %>%
         legend.spacing = unit(1, unit = 'cm'))
 
 if (FALSE) {
-  ggsave("figures/exposure_assignment_map.png", dpi = 600, width = 7, height = 5)
+  ggsave(here("figures", "exposure_assignment_map.png"), dpi = 600, width = 7, height = 5)
 }
 
 #############################################################################
@@ -326,7 +309,7 @@ map_anim <- ggplot(gif_long) +
 
 # save in figures folder
 animate(map_anim, nframes = 150, fps = 10, width = 1000, height = 800, 
-        renderer = gifski_renderer("figures/flooding_over_time.gif"))
+        renderer = gifski_renderer(here("figures", "flooding_over_time.gif")))
 
 ################################################################################
 # carrying 2019-2023 population estimates forward for 2024 estimates
@@ -349,9 +332,5 @@ final_df_long <- final_df_long %>%
   st_drop_geometry()
 
 if (FALSE) {
-  # shared drive: 
-  write.csv(final_df_long, "data/processed_data/zip3_exposure_dataset.csv")
-  
-  # repo directory:
-  write.csv(final_df_long, "data/processed_data/zip3_exposure_dataset.csv")
+  write.csv(final_df_long, here("data", "processed_data", "zip3_exposure_dataset.csv"))
 }
