@@ -1,6 +1,8 @@
 ---
 title: "1_tables"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 Purpose: Generate supplemental and regression tables
@@ -109,24 +111,20 @@ summary_table(table_data_c, demographic_stats)
 # creates table using the cleaned dataframe, specifies the columns to be exposed/unexposed
 summary_table(table_data_c, demographic_stats, by = "exposure_desc")
 
- 
 ```
 
 # Table 1: regression results from primary models
 
 ```{r}
 # assemble table 1
-<<<<<<< HEAD
-results_files <- list.files(here("tables"))
+results_files <- list.files(here("regression_results"))
 
 main_results_files <- results_files[
   grepl(paste(c("main_model","imputation_results"), collapse = "|"), 
         results_files)]
 
-main_results_files <- paste("../../tables/", main_results_files, sep = "")
-
-main_results <- read.csv(main_results_files[2])
-pooled_results <- read.csv(main_results_files[1])
+main_results <- read.csv(here("regression_results", main_results_files[2]))
+pooled_results <- read.csv(here("regression_results", main_results_files[1]))
 
 main_results <- main_results %>%
   dplyr::select(model_group, model_type, plot_estimate, nobs) %>%
@@ -152,43 +150,58 @@ if (FALSE) {
 
 # Analyses focused on private wells
 
-
 ```{r}
-# assemble table 1
-results_files <- list.files(here("tables"))
-=======
-results_files <- list.files("../../tables")
->>>>>>> 7b3d554a6fff55417d734843e00f4b852f30da2e
+pw_results_files <- results_files[grepl("^PW", results_files)]
 
-main_results_files <- results_files[
-  grepl(paste(c("main_model","imputation_results"), collapse = "|"), results_files)]
+pw_group_results <- read.csv(here("regression_results", pw_results_files[1]))
+pw_ixn_model_results <- read.csv(here("regression_results", pw_results_files[2]))
 
-main_results_files <- paste("../../tables/", main_results_files, sep = "")
-
-main_results <- read.csv(main_results_files[2])
-pooled_results <- read.csv(main_results_files[1])
-
-main_results <- main_results %>%
-  dplyr::select(model_group, model_type, plot_estimate, nobs) %>%
+pw_group_results <- pw_group_results %>%
+  dplyr::select(model_group, term, model_type, plot_estimate, nobs) %>%
   mutate(total_events = sum(dat$n_events))
 
-total_imputed_events <- dat_all_imputed %>% 
-  group_by(imputation) %>% 
-  summarise(n = sum(completed_events)) %>% 
-  ungroup()
+pw_ixn_model_results <- pw_ixn_model_results %>%
+  dplyr::select(model_group, term, model_type, plot_estimate, nobs) %>%
+  mutate(total_events = sum(dat$n_events))
 
-pooled_results <- pooled_results %>%
-  dplyr::select(model_group, model_type, plot_estimate) %>%
-  mutate(nobs = unique(table(dat_all_imputed$imputation)),
-         total_events = round(median(total_imputed_events$n), 0))
-
-table_one <- rbind(main_results, pooled_results)
+pw_supp_table <- rbind(pw_group_results, pw_ixn_model_results)
 
 if (FALSE) {
-  write.csv(table_one, here("tables", "table1.csv"))
+  write.csv(pw_supp_table, 
+            here("regression_results", "tables", "supp_table_pw.csv"))
 }
 
 ```
+
+
+```{r}
+private_well_stats <- dat %>%
+  group_by(zip3) %>%
+  slice(1) %>%
+  dplyr::select(zip3, weighted_percent_wells) %>%
+  ungroup()
+
+ggplot(private_well_stats) +
+  geom_histogram(aes(x = weighted_percent_wells/100), bins = 20, color = "black", fill = "darkgreen") +
+  scale_x_continuous(labels = scales::percent) +
+  scale_y_continuous(breaks = scales::breaks_pretty()) +
+  geom_vline(xintercept = 0.5, color = "darkgrey", linetype = "dashed") +
+  theme_bw() +
+  labs(title = "Histogram of the proportion of private well users by zip3", 
+       y = "Count (n = 20)", x = "Percent residents using private wells") +
+  theme(strip.background = element_rect(fill = NA),
+        strip.text = element_text(face = "bold"),
+        plot.title = element_text(face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 8),
+        plot.subtitle = element_text( hjust = 0.5))
+
+if (FALSE) {
+  ggsave(here("figures", "private_well_histogram.png"), dpi = 400,
+         width = 6)
+}
+
+```
+
 
 
 - results for private well analyses
@@ -203,12 +216,11 @@ florence_results_table <- florence_results %>%
   dplyr::select(model_group, model_type, plot_estimate, nobs)
 
 if (FALSE) {
-  write.csv(florence_results_table, "../../tables/tableS2.csv")
+  write.csv(florence_results_table, "../../tables/supp_table_florence.csv")
 }
 
 ```
 
-<<<<<<< HEAD
 # Graphical abstract
 ```{r}
 # TODO create an example CITS figure?
@@ -303,7 +315,4 @@ ggplot(df, aes(x = time, y = count, color = group, group = group)) +
   theme(legend.position = "top")
 
 ```
-
-=======
->>>>>>> 7b3d554a6fff55417d734843e00f4b852f30da2e
 

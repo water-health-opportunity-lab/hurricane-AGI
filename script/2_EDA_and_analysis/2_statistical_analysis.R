@@ -291,14 +291,11 @@ all_final_coefs <- all_final_coefs %>%
                                 model_id == 14 ~ "CITS: mean daily temp + humidity",
                                 model_id == 15 ~ "CITS: max daily temp + humidity",
                                 model_id == 16 ~ "CITS: min daily temp + humidity",
-<<<<<<< HEAD
                                 model_id == 17 ~ "CITS: excl. 5-week period",
                                 model_id == 18 ~ "CITS: private well interaction (3-week)",
                                 model_id == 19 ~ "CITS: private well interaction (5-week)",
-                                model_id == 20 ~ "CITS: private well interaction (8-week)"),
-=======
+                                model_id == 20 ~ "CITS: private well interaction (8-week)",
                                 model_id == 17 ~ "CITS: excl. 5-week period"),
->>>>>>> 7b3d554a6fff55417d734843e00f4b852f30da2e
          model_group = case_when(grepl("CITS: main model", model_type) ~ "CITS: main model",
                                  grepl("CITS: private well", model_type) ~ "CITS: private wells",
                                  grepl("Non-controlled ITS", model_type) ~ "ITS",
@@ -334,43 +331,27 @@ if (FALSE) {
   write.csv(all_final_summary %>% 
               dplyr::filter(grepl("inundation_exposureTRUE:hurricane", term) &
                             model_group == "CITS: main model"),
-<<<<<<< HEAD
             here("regression_results", "main_model_results.csv"))
-=======
-            here("tables", "main_model_results.csv"))
->>>>>>> 7b3d554a6fff55417d734843e00f4b852f30da2e
   
   write.csv(all_final_summary %>% 
               dplyr::filter(grepl("hurricane", term) &
                               model_group == "ITS"),
-<<<<<<< HEAD
             here("regression_results", "non-controlled_ITS_model_results.csv"))
-=======
-            here("tables", "non-controlled_ITS_model_results.csv"))
->>>>>>> 7b3d554a6fff55417d734843e00f4b852f30da2e
   
   write.csv(all_final_summary %>% 
               dplyr::filter(grepl("inundation_exposureTRUE:hurricane", term) &
                               model_group == "Sensitivity analyses"),
-<<<<<<< HEAD
             here("regression_results", "sensitivity_model_results.csv"))
-=======
-            here("tables", "sensitivity_model_results.csv"))
->>>>>>> 7b3d554a6fff55417d734843e00f4b852f30da2e
   
   write.csv(all_final_summary %>% 
               dplyr::filter(grepl("high_private_wellsTRUE:hurricane", term) &
                               model_group == "CITS: private wells"),
-<<<<<<< HEAD
             here("regression_results", "PW_group_model_results.csv"))
   
   write.csv(all_final_summary %>% 
-              dplyr::filter(grepl("inundation_exposureTRUE:hurricane", term) &
-                              model_group == "CITS: private wells"),
+              dplyr::filter(grepl("hurricane", term) &
+                            grepl("CITS: private well interaction", model_type)),
             here("regression_results", "PW_interaction_model_results.csv"))
-=======
-            here("tables", "PW_group_model_results.csv"))
->>>>>>> 7b3d554a6fff55417d734843e00f4b852f30da2e
   
 }
 
