@@ -97,7 +97,7 @@ three_week_SAC <- map_dfr(three_weeks,
   # 
   # for (i in seq_along( unique(dat$zip3) )) {
   #   
-  #   pacf(dat$resid[dat$zip3 == unique(dat$zip3)[i] ] )
+  #   pacf(dat$resid[ dat$zip3 == unique(dat$zip3)[i] ] )
   # }
   
 # varying hurricane period:

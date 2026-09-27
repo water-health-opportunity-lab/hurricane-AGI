@@ -260,7 +260,7 @@ ggplot(dat %>% filter(year == 2024 & month(date) >= 6),
                 xmax = as.Date("2024-10-11"),
                 ymin = -Inf,
                 ymax = Inf), fill = 'darkgrey', color = "darkgrey", alpha = 0.5) +
-  geom_point() +
+  geom_point(size = 0.5) +
   geom_line() +
   scale_y_continuous(limits = c(0, NA)) +
   facet_wrap(~zip3, scales = "free_y") +
@@ -269,6 +269,7 @@ ggplot(dat %>% filter(year == 2024 & month(date) >= 6),
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, vjust = 0.75),
         legend.position = "bottom",
+        strip.background = element_rect(fill = NA),
         legend.title=element_blank())
 
 if (FALSE) {
@@ -375,4 +376,40 @@ if (FALSE) {
   
   ggsave(here("figures", "figure_2.svg"), 
          dpi = 600, height = 5, width = 8)
+}
+
+dat_all_imputed <- dat_all_imputed %>%
+  mutate(case_rate_per10k = completed_events/total_population*1e4,
+         inundation_exposure_plot = ifelse(inundation_exposure, "Flooded", "Non-flooded"))
+
+ggplot(dat_all_imputed %>% filter(year == 2024 & month(date) >= 6), 
+       aes(x = date, y = case_rate_per10k, color = inundation_exposure_plot,
+           group = imputation)) +
+  geom_rect(aes(xmin = as.Date('2024-09-27'),
+                xmax = as.Date("2024-11-15"),
+                ymin = -Inf,
+                ymax = Inf), fill = 'lightgrey', color = "lightgrey", alpha = 0.5) +
+  geom_rect(aes(xmin = as.Date('2024-09-27'),
+                xmax = as.Date("2024-10-25"),
+                ymin = -Inf,
+                ymax = Inf), fill = 'grey', color = "grey", alpha = 0.5) +
+  geom_rect(aes(xmin = as.Date('2024-09-27'),
+                xmax = as.Date("2024-10-11"),
+                ymin = -Inf,
+                ymax = Inf), fill = 'darkgrey', color = "darkgrey", alpha = 0.5) +
+  geom_point(size = 0.1) +
+  geom_line(alpha = 0.8) +
+  facet_wrap(~zip3, scales = "free_y") +
+  scale_y_continuous(limits = c(0, NA)) +
+  labs(x = "Date", y = "AGI visits per 10k") +
+  NatParksPalettes::scale_color_natparks_d(name = "KingsCanyon", direction = -1) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.75),
+        legend.position = "bottom",
+        strip.background = element_rect(fill = NA),
+        legend.title=element_blank())
+
+if (FALSE) {
+  ggsave(here("figures", "imputed_zip3_level_rate_trend.png"), 
+         dpi = 600, height = 7, width = 9)
 }

@@ -115,7 +115,7 @@ summary_table(table_data_c, demographic_stats, by = "exposure_desc")
 
 # Table 1: regression results from primary models
 
-```{r}
+```{r, echo=FALSE}
 # assemble table 1
 results_files <- list.files(here("regression_results"))
 
@@ -148,9 +148,34 @@ if (FALSE) {
 
 ```
 
+# Sensitivity analyses for Hurricane Helene
+
+```{r, echo=FALSE}
+
+sensitivity_results_files <- results_files[
+  grepl(paste(c("sensitivity_model","non-controlled_ITS_model"), collapse = "|"), 
+        results_files)]
+
+sensitivity_results <- read.csv(here("regression_results", sensitivity_results_files[2]))
+ITS_results <- read.csv(here("regression_results", sensitivity_results_files[1]))
+
+sensitivity_results <- sensitivity_results %>%
+  dplyr::select(model_group, model_type, plot_estimate, nobs)
+
+ITS_results <- ITS_results %>%
+  dplyr::select(model_group, model_type, plot_estimate, nobs)
+
+if (FALSE) {
+  write.csv(sensitivity_results, here("regression_results", "tables", "sensitivity_analyses_table.csv"))
+  write.csv(ITS_results, here("regression_results", "tables", "ITS_results_table.csv"))
+}
+
+```
+
 # Analyses focused on private wells
 
-```{r}
+```{r, echo=FALSE}
+
 pw_results_files <- results_files[grepl("^PW", results_files)]
 
 pw_group_results <- read.csv(here("regression_results", pw_results_files[1]))
@@ -174,7 +199,7 @@ if (FALSE) {
 ```
 
 
-```{r}
+```{r, echo=FALSE}
 private_well_stats <- dat %>%
   group_by(zip3) %>%
   slice(1) %>%
@@ -202,21 +227,19 @@ if (FALSE) {
 
 ```
 
-
-
-- results for private well analyses
-- sensitivity analyses (figure or table)
-
 # Hurricane Florence results
 
-```{r}
-florence_results <- read.csv(paste("../../tables/", results_files[1], sep = ""))
+```{r, echo=FALSE}
+florence_results_file <- results_files[grepl("Florence", results_files)]
+
+florence_results <- read.csv(here("regression_results", florence_results))
 
 florence_results_table <- florence_results %>%
   dplyr::select(model_group, model_type, plot_estimate, nobs)
 
 if (FALSE) {
-  write.csv(florence_results_table, "../../tables/supp_table_florence.csv")
+  write.csv(florence_results_table,
+            here("regression_results", "tables", "supp_table_Florence.csv"))
 }
 
 ```
