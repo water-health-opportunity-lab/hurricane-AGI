@@ -232,7 +232,7 @@ if (FALSE) {
 ```{r, echo=FALSE}
 florence_results_file <- results_files[grepl("Florence", results_files)]
 
-florence_results <- read.csv(here("regression_results", florence_results))
+florence_results <- read.csv(here("regression_results", florence_results_file))
 
 florence_results_table <- florence_results %>%
   dplyr::select(model_group, model_type, plot_estimate, nobs)
@@ -243,99 +243,3 @@ if (FALSE) {
 }
 
 ```
-
-# Graphical abstract
-```{r}
-# TODO create an example CITS figure?
-
-CITS_dat <- tibble(
-  t = c(1:50, 1:50),
-  group = c(rep("Exposed", 50), rep("Unexposed", 50)),
-  event = ifelse(t < 25, 0, )
-  outcome = ifelse(
-    group == "Exposed", rpois(n = 50, 2), rpois(n = 50, 2 + 0.5)
-    
-  )
-)
-
-```
-
-```{r}
-
-set.seed(42)
-
-# 1. Define study parameters
-n_timepoints <- 40
-intervene_at <- 21  # Intervention occurs at time point 21
-
-# 2. Build full factorial grid (Time x Group)
-df <- expand.grid(
-  time = 1:n_timepoints,
-  group = c("Control", "Treatment")
-) %>%
-  mutate(
-    group_num  = ifelse(group == "Treatment", 1, 0),
-    post       = ifelse(time >= intervene_at, 1, 0),
-    time_after = ifelse(post == 1, time - intervene_at + 1, 0)
-  )
-
-# 3. Define log-linear coefficients (log scale for count data)
-beta_0 <- 2.50   # Baseline log count (Control at t = 0)
-beta_1 <- 0.01   # Pre-intervention slope (Control)
-beta_2 <- 0.20   # Baseline group difference (Treatment vs Control)
-beta_3 <- 0.005  # Pre-intervention slope difference
-beta_4 <- -0.05  # Control level change post-intervention (external shock)
-beta_5 <- -0.002 # Control slope change post-intervention
-beta_6 <- 0.40   # Immediate intervention level change (Treatment effect)
-beta_7 <- 0.035  # Sustained intervention slope change (Treatment effect)
-
-# 4. Compute expected mean (mu) and generate Poisson count outcome
-df <- df %>%
-  mutate(
-    log_mu = beta_0 + 
-             beta_1 * time + 
-             beta_2 * group_num + 
-             beta_3 * (time * group_num) + 
-             beta_4 * post + 
-             beta_5 * time_after + 
-             beta_6 * (post * group_num) + 
-             beta_7 * (time_after * group_num),
-    
-    mu = exp(log_mu),
-    
-    # Generate outcome Y ~ Poisson(mu)
-    count = rpois(n(), lambda = mu)
-  )
-
-# 5. Fit Poisson GLM to estimate parameters
-fit <- glm(
-  count ~ time * group_num + post * group_num + time_after * group_num,
-  family = poisson(link = "log"),
-  data = df
-)
-
-# Add predicted values to dataframe for smooth plotting
-df$pred <- predict(fit, type = "response")
-
-# 6. Plot Controlled Interrupted Time Series
-ggplot(df, aes(x = time, y = count, color = group, group = group)) +
-  geom_point(alpha = 0.6, size = 2) +
-  # Model fit trends pre and post-intervention
-  geom_line(aes(y = pred), size = 1) +
-  # Intervention vertical indicator line
-  geom_vline(xintercept = intervene_at - 0.5, linetype = "dashed", color = "black") +
-  annotate("text", x = intervene_at - 1, y = max(df$count), 
-           label = "Intervention", hjust = 1, fontface = "italic") +
-  scale_color_manual(values = c("Control" = "#2b5c8f", "Treatment" = "#d95f02")) +
-  labs(
-    title = "Controlled Interrupted Time Series (CITS)",
-    subtitle = "Simulated Poisson Count Outcome",
-    x = "Time Period",
-    y = "Count Outcome",
-    color = "Group"
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(legend.position = "top")
-
-```
-

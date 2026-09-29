@@ -162,6 +162,40 @@ if (FALSE) {
          dpi = 600, height = 4, width = 6.5)
 }
 
+# for abstract art:
+ggplot(agg_exposure_dat %>% filter(year == 2024 & month(date) >= 9 & 
+                                     date <= as.Date("12-01-2024", format = "%m-%d-%Y")), 
+       aes(x = date, y = case_rate_per10k, color = inundation_exposure_plot)) +
+  geom_rect(aes(xmin = as.Date('2024-09-27'),
+                xmax = as.Date("2024-11-15"),
+                ymin = -Inf,
+                ymax = Inf), fill = 'lightgrey', color = "lightgrey", alpha = 0.5) +
+  geom_rect(aes(xmin = as.Date('2024-09-27'),
+                xmax = as.Date("2024-10-25"),
+                ymin = -Inf,
+                ymax = Inf), fill = 'grey', color = "grey", alpha = 0.5) +
+  geom_rect(aes(xmin = as.Date('2024-09-27'),
+                xmax = as.Date("2024-10-11"),
+                ymin = -Inf,
+                ymax = Inf), fill = 'darkgrey', color = "darkgrey", alpha = 0.5) +
+  geom_point(size = 3) +
+  geom_line(size = 1.5) +
+  labs(x = "", y = "") +
+  ylim(0.5, 3.3) +
+  scale_x_date(date_breaks = "3 weeks") +
+  NatParksPalettes::scale_color_natparks_d(name = "KingsCanyon", direction = -1) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5),
+        legend.position = "bottom",
+        axis.text = element_text(face = "bold", size = 12),
+        strip.background = element_rect(fill = NA),
+        legend.title=element_blank())
+
+if (FALSE) {
+  ggsave(here("figures", "TOC_art_trend.png"), 
+         dpi = 600, height = 5, width = 6.5)
+}
+
 ggplot(agg_exposure_dat %>% filter(year == 2024 & month(date) >= 6), 
        aes(x = date, y = ppt_mean, color = as.factor(inundation_exposure_plot))) +
   geom_rect(aes(xmin = as.Date('2024-09-27'),
