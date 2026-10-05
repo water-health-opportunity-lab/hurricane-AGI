@@ -12,15 +12,18 @@ library(spdep)
 library(mitools)
 library(tigris)
 library(tidyverse)
+library(here)
 
 dat_masked <- read.csv(
-  "data/processed_data/dataset_with_added_masked_units_for_imputation.csv"
-)
+  here("data",
+       "processed_data", 
+       "dataset_with_added_masked_units_for_imputation.csv")
+  )
 
 dat <- read_csv(
-  "data/processed_data/analytic_dataset.csv",
+  here("data", "processed_data", "analytic_dataset.csv"),
   show_col_types = FALSE
-)
+  )
 
 dat$zip3 <- as.character(dat$zip3)
 
@@ -39,6 +42,8 @@ dat_masked <- dat_masked %>%
                            TRUE ~ as.character("zip1")),
     
     # this uniquely represents one observed, masked total (zip2- or zip1-by-week)
+    # `dup_week` refers to weeks straddling end of Dec to early Jan, 
+      # which have the same week_start but different case totals
     masked_block_id = interaction(
       week_start,
       dup_week,
@@ -241,7 +246,7 @@ if (any(
 # 11. SUM ALLOCATED MASKED CASES BY ZIP3 AND WEEK (as a test, 3/4)
 ################################################################################
 # A ZIP3-week could potentially receive cases from more than one masked block,
-# particularly if both ZIP1- and ZIP2-level masked records exist.
+  # particularly if both ZIP1- and ZIP2-level masked records exist.
 allocated_by_zip3_week <- imputed_allocation_1 %>%
   group_by(zip3, week_start, dup_week) %>%
   summarise(
@@ -304,16 +309,32 @@ dat_all_imputed <- dat_all_imputed %>%
   ) %>%
   mutate(
     imputed_masked_events =
-      replace_na(imputed_masked_events, 0),
+      replace_na(imputed_masked_events),
     
     completed_events =
       n_events + imputed_masked_events
   )
 
+# verify that totals are preserved across imputations
+dat_all_imputed %>% 
+  group_by(imputation) %>%
+  summarise(n_total = sum(completed_events),
+            n_masked_total = sum(imputed_masked_events)) %>%
+  ungroup()
+
+# totals for each zip3 across imputations, which do vary
+  # print(n = 400,
+  #   dat_all_imputed %>% 
+  #     group_by(imputation, zip3) %>%
+  #     summarise(n_total = sum(completed_events),
+  #               n_masked_total = sum(imputed_masked_events)) %>%
+  #     ungroup()
+  # )
+
 ################################################################################
 # 14. RECALCULATE SPATIAL LAGS 
 ################################################################################
-source("script/2_EDA_and_analysis/analysis_functions.R")
+source(here("script", "2_EDA_and_analysis", "analysis_functions.R"))
 
 # getting zcta shapes using tigris package - 2020 is most recent available
 zcta_geometry <- tigris::zctas(year = 2020, cb = TRUE)
@@ -342,7 +363,8 @@ dat_neighbors <- st_as_sf(dat_neighbors, coords = geometry, crs = st_crs(nc_zip3
 
 nb <- poly2nb(dat_neighbors, queen = TRUE)
 
-dat_neighbors <- map_dfr(1:20, ~id_neighbors.f(row_numbers = .x))
+dat_neighbors <- map_dfr(1:20, ~id_neighbors.f(row_numbers = .x, zip_dataset = dat_neighbors))
+
 dat_neighbors <- dat_neighbors %>% 
   dplyr::select(zip3, id, neighbors) %>%
   st_drop_geometry()
@@ -353,17 +375,20 @@ dat_all_imputed <- dat_all_imputed %>%
   group_by(week_start, imputation) %>% 
   rowwise() %>%
   mutate(neighbor_weight = 1/length(unlist(neighbors))) %>%
-  mutate(neighbor_cases_weighted = sum( neighbor_weight * dat_all_imputed$completed_events[dat_all_imputed$id %in% unlist(neighbors) &
-                                                                                             dat_all_imputed$week_start == week_start &
-                                                                                             dat_all_imputed$imputation == imputation] ),
-         neighbor_cases_unweighted = sum( dat_all_imputed$completed_events[dat_all_imputed$id %in% unlist(neighbors) & 
-                                                                             dat_all_imputed$week_start == week_start &
-                                                                             dat_all_imputed$imputation == imputation])) %>%
+  mutate(neighbor_cases_weighted = sum( 
+    neighbor_weight * dat_all_imputed$completed_events[dat_all_imputed$id %in% unlist(neighbors) &
+                                                       dat_all_imputed$week_start == week_start &
+                                                       dat_all_imputed$imputation == imputation] ),
+         neighbor_cases_unweighted = sum( 
+    dat_all_imputed$completed_events[dat_all_imputed$id %in% unlist(neighbors) & 
+                                     dat_all_imputed$week_start == week_start &
+                                     dat_all_imputed$imputation == imputation] )
+    ) %>%
   ungroup()
 
 if (FALSE) {
   write.csv(dat_all_imputed %>% dplyr::select(-neighbors), # drop list-col
-            "data/processed_data/analytic_imputed_datasets.csv")
+            here("data", "processed_data", "analytic_imputed_datasets.csv"))
 }
 
 ################################################################################
@@ -372,14 +397,6 @@ if (FALSE) {
 nested_data <- dat_all_imputed %>%
   group_by(imputation) %>%
   nest()
-
-fit_model <- function(df, formula) {
-  
-  reg_formula <- as.formula(formula)
-  
-  one_model <- glm(reg_formula, offset = log(total_population), 
-                   data = df, family = "quasipoisson")
-}
 
 nested_data_m1 <- nested_data %>%
   mutate(model = map(data, 
@@ -474,7 +491,7 @@ all_final_coefs <- all_final_coefs %>%
 
 if (FALSE) {
   write.csv(all_final_coefs %>% dplyr::filter(grepl("inundation_exposureTRUE:hurricane", term)),
-            "tables/imputation_results.csv")
+            here("tables", "imputation_results.csv"))
 }
 
 ggplot(all_final_coefs %>% 
@@ -502,5 +519,5 @@ ggplot(all_final_coefs %>%
         plot.margin = unit(c(0.1,0.1,0.1,0.1), "cm"))
 
 if (FALSE) {
-  ggsave("figures/pooled_imputed_results.svg", dpi = 600, height = 4, width = 6)
+  ggsave(here("figures", "pooled_imputed_results.svg"), dpi = 600, height = 4, width = 6)
 }

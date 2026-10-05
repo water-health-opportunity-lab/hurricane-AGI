@@ -2,13 +2,13 @@
 # Purpose: This script pulls data on private well usages in NC and aggregates into the zip3 level.
 # Date created: December 17, 2025
 ###############################################################################
-# set up 
 library(terra)
 library(sf)
 library(dplyr)
 library(tigris)
+library(here)
 
-source("script/1_data_wrangling/1_zip3_wrangling.R")
+source(here("script", "1_data_wrangling", "1_zip3_wrangling.R"))
 
 ###############################################################################
 # directly read in Murray et al. 2020 estimates of domestic water sources in the US (US EPA ORD, 2020)
@@ -99,7 +99,8 @@ ggplot(zip3_wells) +
         legend.spacing = unit(1, unit = 'cm'))
 
 if (FALSE) {
-  ggsave("figures/private_well_map.png", dpi = 600, width = 7, height = 5)
+  ggsave(here("figures", "private_well_map.png"),
+         dpi = 600, width = 7, height = 5)
 }
 
 # another check for previously missing BGs
@@ -119,6 +120,5 @@ final_df_long_well <- final_df_long %>%
     )
 
 if (FALSE) {
-  write.csv(final_df_long_well, ".../.../.../.../.../2-aims/aim3/3_processed_data/zip3_exposure_dataset.csv")
+  write.csv(final_df_long_well, here("data", "processed_data", "zip3_exposure_dataset.csv"))
 }
-

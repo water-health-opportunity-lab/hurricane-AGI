@@ -1,0 +1,16 @@
+"","model_group","term","model_type","plot_estimate","nobs","total_events"
+"1","CITS: private wells","high_private_wellsTRUE:hurricane_3weekTRUE","CITS: private well groups (3-week)","0.92 [0.35, 2.10]",7940,547986
+"2","CITS: private wells","high_private_wellsTRUE:hurricane_5weekTRUE","CITS: private well groups (5-week)","0.97 [0.46, 1.93]",7940,547986
+"3","CITS: private wells","high_private_wellsTRUE:hurricane_8weekTRUE","CITS: private well groups (8-week)","0.96 [0.53, 1.70]",7940,547986
+"4","CITS: private wells","hurricane_3weekTRUE","CITS: private well interaction (3-week)","0.90 [0.61, 1.29]",7940,547986
+"5","CITS: private wells","inundation_exposureTRUE:hurricane_3weekTRUE","CITS: private well interaction (3-week)","1.50 [0.67, 3.19]",7940,547986
+"6","CITS: private wells","hurricane_3weekTRUE:weighted_percent_wells","CITS: private well interaction (3-week)","1.01 [0.98, 1.04]",7940,547986
+"7","CITS: private wells","inundation_exposureTRUE:hurricane_3weekTRUE:weighted_percent_wells","CITS: private well interaction (3-week)","0.98 [0.94, 1.02]",7940,547986
+"8","CITS: private wells","hurricane_5weekTRUE","CITS: private well interaction (5-week)","0.91 [0.67, 1.23]",7940,547986
+"9","CITS: private wells","inundation_exposureTRUE:hurricane_5weekTRUE","CITS: private well interaction (5-week)","1.52 [0.82, 2.76]",7940,547986
+"10","CITS: private wells","hurricane_5weekTRUE:weighted_percent_wells","CITS: private well interaction (5-week)","1.01 [0.99, 1.04]",7940,547986
+"11","CITS: private wells","inundation_exposureTRUE:hurricane_5weekTRUE:weighted_percent_wells","CITS: private well interaction (5-week)","0.98 [0.95, 1.01]",7940,547986
+"12","CITS: private wells","hurricane_8weekTRUE","CITS: private well interaction (8-week)","0.90 [0.70, 1.14]",7940,547986
+"13","CITS: private wells","inundation_exposureTRUE:hurricane_8weekTRUE","CITS: private well interaction (8-week)","1.55 [0.94, 2.52]",7940,547986
+"14","CITS: private wells","hurricane_8weekTRUE:weighted_percent_wells","CITS: private well interaction (8-week)","1.01 [0.99, 1.03]",7940,547986
+"15","CITS: private wells","inundation_exposureTRUE:hurricane_8weekTRUE:weighted_percent_wells","CITS: private well interaction (8-week)","0.98 [0.95, 1.00]",7940,547986

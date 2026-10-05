@@ -31,6 +31,7 @@ eval_SAC.f <- function(hurricane_week = NULL, model = NULL, model_dataset = NULL
   
 }
 
+# function to identify neighbors for zip3 regions
 id_neighbors.f <- function(row_numbers = NULL, zip_dataset = dat_neighbors) {
   
   one_row <- zip_dataset[row_numbers,]
@@ -41,4 +42,13 @@ id_neighbors.f <- function(row_numbers = NULL, zip_dataset = dat_neighbors) {
   
   return(one_row)
   
+}
+
+# model function for imputation analyses (script #3)
+fit_model <- function(df, formula) {
+  
+  reg_formula <- as.formula(formula)
+  
+  one_model <- glm(reg_formula, offset = log(total_population), 
+                   data = df, family = "quasipoisson")
 }
