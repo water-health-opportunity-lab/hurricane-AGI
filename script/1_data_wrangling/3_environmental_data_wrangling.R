@@ -326,7 +326,7 @@ check_summary_table
 # validating precipitation data for May 10-16, 2019 - sum
 
 # data processed in R
-sum_precip <- rast("C:/Users/kobri/Downloads/prism_nc_full_0128/ppt_20190510_weekly_sum.tif")
+sum_precip <- rast(".../.../.../.../.../ppt_20190510_weekly_sum.tif")
 
 # summary stats for processed code
 vals <- values(sum_precip, na.rm = TRUE)
