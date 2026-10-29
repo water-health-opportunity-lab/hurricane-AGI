@@ -9,7 +9,6 @@
 library(sf)
 library(exactextractr)
 library(terra)
-library(tidyr)
 library(tigris)
 library(tidycensus)
 library(gganimate)
@@ -83,7 +82,10 @@ nc_final <- nc_pop_zip3_wide %>%
   left_join(nc_zip3_geom, by = c("zip3" = "zip3")) %>%
   st_as_sf
 
-# TODO: describe "completed tif files" folders
+############
+# "completed tif files" folder contains satellite-derived estimates from the 
+  # Global Flood Monitoring System (University of Maryland, 2025)
+############
 filepath <- here("data", "raw_data", "01_exposure_assessment",
                  "Satellite-based inundation map", "Completed .tif files")
 
@@ -199,6 +201,12 @@ ggplot(inundation_metrics) +
         plot.title = element_text(face = "bold", hjust = 0.5),
         axis.text.x = element_text(size = 8),
         plot.subtitle = element_text( hjust = 0.5))
+
+# mean vs median result in identical classification:
+table(
+  inundation_metrics$perc_inundated[inundation_metrics$metric == "median_flood_value"] > 0.5,
+  inundation_metrics$perc_inundated[inundation_metrics$metric == "mean_flood_value"] > 0.5
+)
 
 # only rewrite if there are edits:
 if (FALSE) {

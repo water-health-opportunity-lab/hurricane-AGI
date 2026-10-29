@@ -5,13 +5,9 @@
 ###############################################################################
 library(prism)
 library(terra)
-library(lubridate)
 library(sf)
 library(tidyverse)
-library(purrr)
-library(stringr)
-library(tibble)
-library(dplyr)
+library(here)
 
 source(here("script", "1_data_wrangling", "1_zip3_wrangling.R"))
 
@@ -19,13 +15,13 @@ source(here("script", "1_data_wrangling", "1_zip3_wrangling.R"))
 
 # set temporary directory
 # note: prism_temp_full_0128 will be a folder on your personal computer
-full_dir_temp <- ".../.../.../.../prism_temp_full_0128"
+full_dir_temp <- here("data", "raw data", "01_exposure_assessment", "prism_temp_full_0128")
 prism_set_dl_dir(full_dir_temp)
 dir.create(full_dir_temp, showWarnings=FALSE, recursive=TRUE)
 
 # set directory for completed data
 # note: prism_nc_full_0128 will be a folder on your personal computer
-full_nc_dir <- ".../.../.../.../prism_nc_full_0128"
+full_nc_dir <- here("data", "raw data", "01_exposure_assessment", "prism_nc_full_0128")
 dir.create(full_nc_dir, showWarnings=FALSE, recursive=TRUE)
 
 # define study period as January 1, 2016 to January 2, 2025 - full 470 weeks

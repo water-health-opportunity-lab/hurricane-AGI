@@ -1,6 +1,6 @@
 **Code repository for the REACH Center pilot project -- Aim 3**
 
-*Examine health outcomes associated with private well contamination following hurricanes*
+*The Impact of Hurricane Helene on the Incidence of Acute Gastrointestinal Illness in North Carolina: A Controlled Interrupted Time Series Analysis*
 
 This project develops reproducible, data-driven workflows to analyze the effects of hurricanes on private well contamination and associated health risks. We use public datasets, electronic health records, and geospatial and econometric methods in R.
 
@@ -16,6 +16,7 @@ hurricane-AGI/
 ├── renv/                 # Directory containing renv infrastructure for the project
 ├── data/                 # Directory containing input and output data, do not commit to git
     ├──processed_data/    # Sub-folder with processed and analytical datasets
+    ├──raw_data/          # Sub-folder with raw exposure and outcome data
 └── script/               # Main analysis scripts
 ```
 

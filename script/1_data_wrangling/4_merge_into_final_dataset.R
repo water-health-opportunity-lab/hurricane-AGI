@@ -109,7 +109,7 @@ join_outcomes <- join_outcomes %>%
 
 ################################################################################
 # final preprocessing steps: (1) add substitutions for missing / zero events, 
-  # (2) drop 2016 data due to unclear backfilling in EHR, and 
+  # (2) drop 2016 data due to backfilling in EHR, and 
   # and (3) drop in proximity to other hurricanes
 join_outcomes <- join_outcomes %>%
     mutate(n_events = ifelse(is.na(n_events), 0, n_events),
