@@ -16,8 +16,6 @@ Date created: February 23, 2026
 library(tidycensus)
 library(qwraps2)
 library(tigris)
-library(dplyr)
-library(stringr)
 library(sf)
 library(here)
 library(tidyverse)

@@ -20,6 +20,11 @@ hurricane-AGI/
 └── script/               # Main analysis scripts
 ```
 
+## Necessary packages
+
+`broom`, `exactextractr`, `gganimate`, `ggspatial`, `here`, `MASS`, `MetBrewer`, `mitools`, `patchwork`, `prism`, `qwraps2`, `sf`, `spdep`, `terra`, `tidycensus`, `tidyverse`, and `tigris`
+
+
 ## 🚀 Getting started with renv
 
 This project uses renv to manage R package dependencies, ensuring reproducibility. Here's how to get started:
