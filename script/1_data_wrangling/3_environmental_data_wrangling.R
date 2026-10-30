@@ -15,13 +15,13 @@ source(here("script", "1_data_wrangling", "1_zip3_wrangling.R"))
 
 # set temporary directory
 # note: prism_temp_full_0128 will be a folder on your personal computer
-full_dir_temp <- here("data", "raw data", "01_exposure_assessment", "prism_temp_full_0128")
+full_dir_temp <- here("data", "raw_data", "01_exposure_assessment", "prism_temp_full_0128")
 prism_set_dl_dir(full_dir_temp)
 dir.create(full_dir_temp, showWarnings=FALSE, recursive=TRUE)
 
 # set directory for completed data
 # note: prism_nc_full_0128 will be a folder on your personal computer
-full_nc_dir <- here("data", "raw data", "01_exposure_assessment", "prism_nc_full_0128")
+full_nc_dir <- here("data", "raw_data", "01_exposure_assessment", "prism_nc_full_0128")
 dir.create(full_nc_dir, showWarnings=FALSE, recursive=TRUE)
 
 # define study period as January 1, 2016 to January 2, 2025 - full 470 weeks
@@ -265,7 +265,10 @@ for (var in c(variables)) {
 # validating precipitation data for May 10-16, 2019 - mean
 
 # data processed in R
-mean_precip <- rast(".../.../.../.../prism_nc_full_0128/ppt_20190510_weekly_mean.tif")
+mean_precip <- rast(here("data", "raw_data", 
+                         "01_exposure_assessment",
+                         "prism_nc_full_0128",
+                         "ppt_20190510_weekly_mean.tif"))
 
 # summary stats for processed code
 vals <- values(mean_precip, na.rm = TRUE)
@@ -284,7 +287,11 @@ summary_table
 # pulling in folder of downloaded files and stacking them
 # note: precip_check will be a folder on your personal computer storing the 
 # downloaded data
-check <- ".../.../.../.../precip_check"
+
+check <- here("data", "raw_data", 
+              "01_exposure_assessment",
+              "precip_check")
+
 files <- list.files(check, pattern = "\\.tif$", full.names=TRUE)
 check_stack <- rast(files)
 
@@ -319,7 +326,10 @@ check_summary_table
 # validating precipitation data for May 10-16, 2019 - sum
 
 # data processed in R
-sum_precip <- rast(".../.../.../.../.../ppt_20190510_weekly_sum.tif")
+sum_precip <- rast(here("data", "raw_data", 
+                        "01_exposure_assessment",
+                        "prism_nc_full_0128",
+                        "ppt_20190510_weekly_sum.tif"))
 
 # summary stats for processed code
 vals <- values(sum_precip, na.rm = TRUE)
@@ -338,7 +348,9 @@ summary_table
 # pulling in folder of downloaded files and stacking them
 # note: precip_check will be a folder on your personal computer storing the 
 # downloaded data
-check <- ".../.../.../.../precip_check"
+check <- here("data", "raw_data", 
+              "01_exposure_assessment",
+              "precip_check")
 files <- list.files(check, pattern = "\\.tif$", full.names=TRUE)
 check_stack <- rast(files)
 
@@ -473,7 +485,7 @@ zip3_envdat_wide <- zip3_envdat_wide |>
 prism_nc_final <- zip3_envdat_wide
 
 if (FALSE) {
-  write.csv(prism_nc_final, ".../.../.../.../.../2-aims/aim3/3_processed_data/env_data.csv")
+  write.csv(prism_nc_final, here("data", "processed_data", "env_data.csv"))
 }
 
 

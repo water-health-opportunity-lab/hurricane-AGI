@@ -235,6 +235,23 @@ m1a_private_wells <- glm(n_events ~ high_private_wells*hurricane_3week +
     #                            log(neighbor_cases_weighted + 1), 
     #                          offset = log(total_population),
     #                          data = dat, family = "quasipoisson")
+  # additional cut-points for comparison:
+    # dat <- dat %>%
+    #   mutate(high_private_wells = ifelse(weighted_percent_wells > 20, TRUE, FALSE))
+    # 
+    # m1a_private_wells <- glm(n_events ~ high_private_wells*hurricane_3week +
+    #                            high_private_wells*as.factor(year) + high_private_wells*as.factor(month) +
+    #                            log(neighbor_cases_weighted + 1),
+    #                          offset = log(total_population),
+    #                          data = dat, family = "quasipoisson")
+    # dat <- dat %>%
+    #   mutate(high_private_wells = ifelse(weighted_percent_wells > 10, TRUE, FALSE))
+    # 
+    # m1a_private_wells <- glm(n_events ~ high_private_wells*hurricane_3week +
+    #                            high_private_wells*as.factor(year) + high_private_wells*as.factor(month) +
+    #                            log(neighbor_cases_weighted + 1),
+    #                          offset = log(total_population),
+    #                          data = dat, family = "quasipoisson")
 
 m1b_private_wells <- glm(n_events ~ high_private_wells*hurricane_5week +
                            high_private_wells*as.factor(year) + high_private_wells*as.factor(month) +

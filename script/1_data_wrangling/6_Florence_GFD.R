@@ -16,10 +16,11 @@ library(ggspatial)
 
 message("Make sure file paths for raw flooding data are set prior to running source():")
 
-source("script/1_data_wrangling/1_zip3_wrangling.R")
+source(here("script", "1_data_wrangling", "1_zip3_wrangling.R"))
 
 # import data (replace with file location for raw data)
-flood_dat <- st_read("data/raw_data/01_exposure_assessment/Global Flood Database/Global_Flood_Records.gpkg")
+flood_dat <- st_read(here("data", "raw_data", "01_exposure_assessment", 
+                          "Global Flood Database", "Global_Flood_Records.gpkg"))
 
 # testing import, plotting all events
 plot(flood_dat$geom)
@@ -125,5 +126,5 @@ flor_final_df <- flor_final_df %>%
 
 # write to csv
 if (FALSE) {
-  write.csv(flor_final_df, "data/processed_data/florence_exp.csv")
+  write.csv(flor_final_df, here("data", "processed_data", "florence_exp.csv"))
 }

@@ -154,5 +154,6 @@ join_outcomes_exposure <- join_outcomes_exposure %>%
   dplyr::select(-X, -encounter_year)
 
 if (FALSE) {
-  write_csv(join_outcomes_exposure, "data/processed_data/florence_analytic_dataset.csv")
+  write_csv(join_outcomes_exposure, here("data", "processed_data", 
+                                         "florence_analytic_dataset.csv"))
 }
