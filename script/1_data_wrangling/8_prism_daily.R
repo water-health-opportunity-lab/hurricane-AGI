@@ -14,10 +14,8 @@ library(dplyr)
 source(here("script", "1_data_wrangling", "1_zip3_wrangling.R"))
 
 ###############################################################################
-
 # get prism estimates at daily level
-
-prism_dir <- ".../.../.../.../prism_precip_daily"
+prism_dir <- here("data", "raw_data", "01_exposure_assessment", "prism_precip_daily")
 prism_set_dl_dir(prism_dir)
 
 # download prism data
@@ -60,7 +58,7 @@ precip_daily_zip3 <- precip_daily_zip3 %>%
   rename_with(~ str_remove(., "^mean\\.ppt_"), starts_with("mean.ppt_"))
 
 # pulling in exposure assignments
-exp <- read_csv(".../.../.../.../.../.../aim3-AGI/3_processed_data/zip3_exposure_dataset.csv")
+exp <- read_csv(here("data", "processed_data", "zip3_exposure_dataset.csv"))
 exp_c <- exp %>%
   mutate(zip3 = as.character(zip3)) %>%
   group_by(zip3) %>%
@@ -98,7 +96,6 @@ ggplot(precip_daily_zip3_long,
                 xmax = as.Date("2024-10-11"),
                 ymin = -Inf,
                 ymax = Inf), fill = 'darkgrey', color = "darkgrey", alpha = 0.5) +
-  geom_point(size = 0.5) +
   geom_line() +
   facet_wrap(~zip3) +
   labs(x = "Date", y = "Mean daily precipitation [mm]") +
