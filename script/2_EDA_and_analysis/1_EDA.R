@@ -410,6 +410,9 @@ if (FALSE) {
   
   ggsave(here("figures", "figure_2.svg"), 
          dpi = 600, height = 5, width = 8)
+  
+  ggsave(here("figures", "figure_2.pdf"), 
+         dpi = 600, height = 5, width = 8)
 }
 
 dat_all_imputed <- dat_all_imputed %>%
